@@ -153,8 +153,8 @@ static float maxEngineForce = 1000.f;  //this should be engine/velocity dependen
 static float gVehicleSteering = 0.f;
 static float steeringIncrement = 0.04f;
 static float steeringClamp = 0.3f;
-static float wheelRadius = 0.5f;
-static float wheelWidth = 0.4f;
+static float wheelRadius = 0.1f;
+static float wheelWidth = 0.1f;
 //static float	wheelFriction = 1000;//BT_LARGE_FLOAT;
 //static float	suspensionStiffness = 20.f;
 //static float	suspensionDamping = 2.3f;
@@ -253,10 +253,11 @@ Hinge2Vehicle::~Hinge2Vehicle()
 
 void Hinge2Vehicle::initPhysics()
 {
+	// init gui
 	m_guiHelper->setUpAxis(1);
 
-	btCollisionShape* groundShape = new btBoxShape(btVector3(50, 3, 50));
-	m_collisionShapes.push_back(groundShape);
+	// init bullet
+	//m_dynamicsWorld->setGravity(btVector3(0,0,0));
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
 	btVector3 worldMin(-1000, -1000, -1000);
@@ -285,17 +286,51 @@ void Hinge2Vehicle::initPhysics()
 	m_dynamicsWorld->getSolverInfo().m_numIterations = 100;
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
 
-	//m_dynamicsWorld->setGravity(btVector3(0,0,0));
+	// add ground
+	btCompoundShape* groundCompound = new btCompoundShape();
+	m_collisionShapes.push_back(groundCompound);
+	{
+		btCollisionShape* groundShape = new btBoxShape(btVector3(50, 3, 50));
+		m_collisionShapes.push_back(groundShape);
+		
+		btTransform localTrans;
+		localTrans.setIdentity();
+		localTrans.setOrigin(btVector3(0, -3, 0));
+
+		groundCompound->addChildShape(localTrans, groundShape);
+	}
+	// add ramp
+	{
+		btVector3 p_bbl(10.0, 	0, 		0); // -y z x
+		btVector3 p_bbr(-10.0, 	0, 		0);
+		btVector3 p_bfr(-10.0, 	0, 		4.0);
+		btVector3 p_bfl(10.0, 	0, 		4.0);
+		btVector3 p_tfl(10.0, 	2.0, 	4.0);
+		btVector3 p_tfr(-10.0, 	2.0, 	4.0);
+    	btTriangleMesh *mesh = new btTriangleMesh();
+		mesh->addTriangle(p_bbl, p_bbr, p_bfr);
+		mesh->addTriangle(p_bbl, p_bfr, p_bfl);
+		mesh->addTriangle(p_bbl, p_bbr, p_tfr);
+		mesh->addTriangle(p_bbl, p_tfr, p_tfl);
+		mesh->addTriangle(p_bbl, p_bfl, p_tfl);
+		mesh->addTriangle(p_bbr, p_bfr, p_tfr);
+		mesh->addTriangle(p_bfl, p_bfr, p_tfr);
+		mesh->addTriangle(p_bfl, p_tfr, p_tfl);
+    	btCollisionShape* shape = new btBvhTriangleMeshShape(mesh,true,true);
+		m_collisionShapes.push_back(shape);
+
+		btTransform tr;
+		tr.setIdentity();
+		tr.setOrigin(btVector3(0, 0, 10.0));
+		groundCompound->addChildShape(tr, shape);
+	}
 	btTransform tr;
 	tr.setIdentity();
-	tr.setOrigin(btVector3(0, -3, 0));
+	// tr.setOrigin(btVector3(0, -3, 0));
+	localCreateRigidBody(0, tr, groundCompound);
 
-	//either use heightfield or triangle mesh
-
-	//create ground object
-	localCreateRigidBody(0, tr, groundShape);
-
-	btCollisionShape* chassisShape = new btBoxShape(btVector3(1.f, 0.5f, 2.f));
+	// add chassis
+	btCollisionShape* chassisShape = new btBoxShape(btVector3(0.66f, 0.25f, 1.f)); // width (z), height (-y), length (x)
 	m_collisionShapes.push_back(chassisShape);
 
 	btCompoundShape* compound = new btCompoundShape();
@@ -303,24 +338,25 @@ void Hinge2Vehicle::initPhysics()
 	btTransform localTrans;
 	localTrans.setIdentity();
 	//localTrans effectively shifts the center of mass with respect to the chassis
-	localTrans.setOrigin(btVector3(0, 1, 0));
+	localTrans.setOrigin(btVector3(0, 0, 0));
 
 	compound->addChildShape(localTrans, chassisShape);
 
-	{
-		btCollisionShape* suppShape = new btBoxShape(btVector3(0.5f, 0.1f, 0.5f));
-		btTransform suppLocalTrans;
-		suppLocalTrans.setIdentity();
-		//localTrans effectively shifts the center of mass with respect to the chassis
-		suppLocalTrans.setOrigin(btVector3(0, 1.0, 2.5));
-		compound->addChildShape(suppLocalTrans, suppShape);
-	}
+	// add plank to front of vehicle to shift COG
+	// {
+	// 	btCollisionShape* suppShape = new btBoxShape(btVector3(0.5f, 0.1f, 0.5f));
+	// 	btTransform suppLocalTrans;
+	// 	suppLocalTrans.setIdentity();
+	// 	//localTrans effectively shifts the center of mass with respect to the chassis
+	// 	suppLocalTrans.setOrigin(btVector3(0, 1.0, 2.5));
+	// 	compound->addChildShape(suppLocalTrans, suppShape);
+	// }
 
 	const btScalar FALLHEIGHT = 5;
 	tr.setOrigin(btVector3(0, FALLHEIGHT, 0));
 
-	const btScalar chassisMass = 2.0f;
-	const btScalar wheelMass = 1.0f;
+	const btScalar chassisMass = 1.0f;
+	const btScalar wheelMass = 0.2f;
 	m_carChassis = localCreateRigidBody(chassisMass, tr, compound);  //chassisShape);
 	//m_carChassis->setDamping(0.2,0.2);
 
@@ -328,10 +364,10 @@ void Hinge2Vehicle::initPhysics()
 	m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
 
 	btVector3 wheelPos[4] = {
-		btVector3(btScalar(-1.), btScalar(FALLHEIGHT-0.25), btScalar(1.25)),
-		btVector3(btScalar(1.), btScalar(FALLHEIGHT-0.25), btScalar(1.25)),
-		btVector3(btScalar(1.), btScalar(FALLHEIGHT-0.25), btScalar(-1.25)),
-		btVector3(btScalar(-1.), btScalar(FALLHEIGHT-0.25), btScalar(-1.25))};
+		btVector3(btScalar(-0.33), 	btScalar(FALLHEIGHT), 	btScalar(0.5)),
+		btVector3(btScalar(0.33), 	btScalar(FALLHEIGHT), 	btScalar(0.5)),
+		btVector3(btScalar(0.33), 	btScalar(FALLHEIGHT), 	btScalar(-0.5)),
+		btVector3(btScalar(-0.33), 	btScalar(FALLHEIGHT), 	btScalar(-0.5))};
 
 	for (int i = 0; i < 4; i++)
 	{
