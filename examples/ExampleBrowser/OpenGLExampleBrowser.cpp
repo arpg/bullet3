@@ -201,7 +201,7 @@ void MyKeyboardCallback(int key, int state)
 		{
 			gDebugDrawFlags ^= btIDebugDraw::DBG_DrawAabb;
 		}
-		if (key == 'c' && state)
+		if (key == 'm' && state)
 		{
 			gDebugDrawFlags ^= btIDebugDraw::DBG_DrawContactPoints;
 		}
@@ -210,17 +210,17 @@ void MyKeyboardCallback(int key, int state)
 			gDebugDrawFlags ^= btIDebugDraw::DBG_NoDeactivation;
 			gDisableDeactivation = ((gDebugDrawFlags & btIDebugDraw::DBG_NoDeactivation) != 0);
 		}
-		if (key == 'j' && state)
+		if (key == 'f' && state)
 		{
 			gDebugDrawFlags ^= btIDebugDraw::DBG_DrawFrames;
 		}
 
-		if (key == 'k' && state)
+		if (key == 'c' && state)
 		{
 			gDebugDrawFlags ^= btIDebugDraw::DBG_DrawConstraints;
 		}
 
-		if (key == 'l' && state)
+		if (key == 'x' && state)
 		{
 			gDebugDrawFlags ^= btIDebugDraw::DBG_DrawConstraintLimits;
 		}
@@ -240,7 +240,7 @@ void MyKeyboardCallback(int key, int state)
 			renderGui = !renderGui;
 		}
 
-		if (key == 'i' && state)
+		if (key == 'p' && state)
 		{
 			pauseSimulation = !pauseSimulation;
 		}
@@ -249,7 +249,7 @@ void MyKeyboardCallback(int key, int state)
 			singleStepSimulation = true;
 		}
 
-		if (key == 'p')
+		if (key == 't')
 		{
 			if (state)
 			{

@@ -16,6 +16,8 @@ subject to the following restrictions:
 ///May 2015: implemented the wheels using the Hinge2Constraint
 ///todo: add controls for the motors etc.
 
+#include <iostream>
+
 #include "Hinge2Vehicle.h"
 
 #include "btBulletDynamicsCommon.h"
@@ -153,8 +155,8 @@ static float maxEngineForce = 1000.f;  //this should be engine/velocity dependen
 static float gVehicleSteering = 0.f;
 static float steeringIncrement = 0.04f;
 static float steeringClamp = 0.3f;
-static float wheelRadius = 0.1f;
-static float wheelWidth = 0.1f;
+static float wheelRadius = 0.075f;
+static float wheelHalfWidth = 0.1f;
 //static float	wheelFriction = 1000;//BT_LARGE_FLOAT;
 //static float	suspensionStiffness = 20.f;
 //static float	suspensionDamping = 2.3f;
@@ -330,7 +332,10 @@ void Hinge2Vehicle::initPhysics()
 	localCreateRigidBody(0, tr, groundCompound);
 
 	// add chassis
-	btCollisionShape* chassisShape = new btBoxShape(btVector3(0.66f, 0.25f, 1.f)); // width (z), height (-y), length (x)
+	float chassisHalfWidth = 0.1;
+	float chassisHalfHeight = 0.05;
+	float chassisHalfLength = 0.4;
+	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength)); // width (z), height (-y), length (x)
 	m_collisionShapes.push_back(chassisShape);
 
 	btCompoundShape* compound = new btCompoundShape();
@@ -355,19 +360,18 @@ void Hinge2Vehicle::initPhysics()
 	const btScalar FALLHEIGHT = 5;
 	tr.setOrigin(btVector3(0, FALLHEIGHT, 0));
 
-	const btScalar chassisMass = 1.0f;
-	const btScalar wheelMass = 0.2f;
+	const btScalar chassisMass = 12.0f;
+	const btScalar wheelMass = 2.0f;
 	m_carChassis = localCreateRigidBody(chassisMass, tr, compound);  //chassisShape);
 	//m_carChassis->setDamping(0.2,0.2);
 
-	//m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth,wheelRadius,wheelRadius));
-	m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
+	m_wheelShape = new btCylinderShapeX(btVector3(wheelHalfWidth, wheelRadius, wheelRadius));
 
 	btVector3 wheelPos[4] = {
-		btVector3(btScalar(-0.33), 	btScalar(FALLHEIGHT), 	btScalar(0.5)),
-		btVector3(btScalar(0.33), 	btScalar(FALLHEIGHT), 	btScalar(0.5)),
-		btVector3(btScalar(0.33), 	btScalar(FALLHEIGHT), 	btScalar(-0.5)),
-		btVector3(btScalar(-0.33), 	btScalar(FALLHEIGHT), 	btScalar(-0.5))};
+		btVector3(btScalar(-chassisHalfWidth-wheelHalfWidth), 	btScalar(FALLHEIGHT-chassisHalfHeight), 	btScalar( chassisHalfLength)),
+		btVector3(btScalar(chassisHalfWidth+wheelHalfWidth), 	btScalar(FALLHEIGHT-chassisHalfHeight), 	btScalar( chassisHalfLength)),
+		btVector3(btScalar(chassisHalfWidth+wheelHalfWidth), 	btScalar(FALLHEIGHT-chassisHalfHeight), 	btScalar(-chassisHalfLength)),
+		btVector3(btScalar(-chassisHalfWidth-wheelHalfWidth), 	btScalar(FALLHEIGHT-chassisHalfHeight), 	btScalar(-chassisHalfLength))};
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -383,6 +387,7 @@ void Hinge2Vehicle::initPhysics()
 		tr.setOrigin(wheelPos[i]);
 
 		btRigidBody* pBodyB = createRigidBody(wheelMass, tr, m_wheelShape);
+		// pBodyB->setRestitution(0.5);
 		pBodyB->setFriction(1110);
 		pBodyB->setActivationState(DISABLE_DEACTIVATION);
 		// add some data to build constraint frames
@@ -412,8 +417,8 @@ void Hinge2Vehicle::initPhysics()
 		pHinge2->setParam( BT_CONSTRAINT_CFM, 0.15f, 2 );
 		pHinge2->setParam( BT_CONSTRAINT_ERP, 0.35f, 2 );
 
-		pHinge2->setDamping( 2, 2.0 );
-		pHinge2->setStiffness( 2, 40.0 );
+		pHinge2->setDamping( 2, 1.0 );
+		pHinge2->setStiffness( 2, 1.0 );
 
 		pHinge2->setDbgDrawSize(btScalar(5.f));
 	}
@@ -531,9 +536,6 @@ bool Hinge2Vehicle::keyboardCallback(int key, int state)
 	{
 		if (isShiftPressed)
 		{
-		}
-		else
-		{
 			switch (key)
 			{
 				case B3G_LEFT_ARROW:
@@ -608,6 +610,102 @@ bool Hinge2Vehicle::keyboardCallback(int key, int state)
 					handled = true;
 					m_useDefaultCamera = !m_useDefaultCamera;
 					break;
+				default:
+					break;
+			}
+		}
+		else
+		{
+			switch (key)
+			{
+				case 'j':
+				case B3G_LEFT_ARROW:
+				{
+					std::cout << "left" << std::endl;
+					handled = true;
+					gVehicleSteering += steeringIncrement;
+					if (gVehicleSteering > steeringClamp)
+						gVehicleSteering = steeringClamp;
+
+					break;
+				}
+				case 'l':
+				case B3G_RIGHT_ARROW:
+				{
+					std::cout << "right" << std::endl;
+					handled = true;
+					gVehicleSteering -= steeringIncrement;
+					if (gVehicleSteering < -steeringClamp)
+						gVehicleSteering = -steeringClamp;
+
+					break;
+				}
+				case 'i':
+				case B3G_UP_ARROW:
+				{
+					std::cout << "up" << std::endl;
+					handled = true;
+					gEngineForce = maxEngineForce;
+					gBreakingForce = 0.f;
+					break;
+				}
+				case 'k':
+				case B3G_DOWN_ARROW:
+				{
+					std::cout << "down" << std::endl;
+					handled = true;
+					gEngineForce = -maxEngineForce;
+					gBreakingForce = 0.f;
+					break;
+				}
+
+				case 'r':
+				{
+					std::cout << "reset" << std::endl;
+					// resetForklift();
+					clientResetScene();
+				}
+
+				case B3G_F7:
+				{
+					handled = true;
+					btDiscreteDynamicsWorld* world = (btDiscreteDynamicsWorld*)m_dynamicsWorld;
+					world->setLatencyMotionStateInterpolation(!world->getLatencyMotionStateInterpolation());
+					printf("world latencyMotionStateInterpolation = %d\n", world->getLatencyMotionStateInterpolation());
+					break;
+				}
+				case B3G_F6:
+				{
+					handled = true;
+					//switch solver (needs demo restart)
+					useMCLPSolver = !useMCLPSolver;
+					printf("switching to useMLCPSolver = %d\n", useMCLPSolver);
+
+					delete m_solver;
+					if (useMCLPSolver)
+					{
+						btDantzigSolver* mlcp = new btDantzigSolver();
+						//btSolveProjectedGaussSeidel* mlcp = new btSolveProjectedGaussSeidel;
+						btMLCPSolver* sol = new btMLCPSolver(mlcp);
+						m_solver = sol;
+					}
+					else
+					{
+						m_solver = new btSequentialImpulseConstraintSolver();
+					}
+
+					m_dynamicsWorld->setConstraintSolver(m_solver);
+
+					//exitPhysics();
+					//initPhysics();
+					break;
+				}
+
+				case B3G_F5:
+					handled = true;
+					m_useDefaultCamera = !m_useDefaultCamera;
+					break;
+
 				default:
 					break;
 			}
