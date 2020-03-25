@@ -630,13 +630,13 @@ void Hinge2Vehicle::renderScene()
 // }
 
 template <typename T>
-static T Hinge2Vehicle::calcLinearBezier(T* pts, float tau)
+T Hinge2Vehicle::calcLinearBezier(T* pts, float tau)
 {
 	return (1-tau)*pts[0] + tau*pts[1];
 }
 
 template <typename T>
-static T Hinge2Vehicle::calcNDBezier(T* pts, float tau, int degree)
+T Hinge2Vehicle::calcNDBezier(T* pts, float tau, int degree)
 {
 	assert(tau>=0 && tau<=1);
 	assert(degree>=0);
