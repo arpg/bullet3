@@ -18,6 +18,8 @@ subject to the following restrictions:
 ///@todo is a basic engine model:
 ///A function that maps user input (throttle) into torque/force applied on the wheels
 ///with gears etc.
+#include <iostream>
+
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
 
@@ -34,6 +36,7 @@ class btCollisionShape;
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 
 #include "../CommonInterfaces/CommonExampleInterface.h"
+// #include "../CommonInterfaces/CommonRigidBodyBase.h"
 #include "LinearMath/btAlignedObjectArray.h"
 #include "btBulletCollisionCommon.h"
 #include "../CommonInterfaces/CommonGUIHelperInterface.h"
@@ -155,12 +158,6 @@ public:
 	*/
 };
 
-btScalar maxMotorImpulse = 4000.f;
-
-//the sequential impulse solver has difficulties dealing with large mass ratios (differences), between loadMass and the fork parts
-btScalar loadMass = 350.f;  //
-//btScalar loadMass = 10.f;//this should work fine for the SI solver
-
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -189,35 +186,66 @@ bool useMCLPSolver = true;
 ///notice that for higher-quality slow-moving vehicles, another approach might be better
 ///implementing explicit hinged-wheel constraints with cylinder collision, rather then raycasts
 float gEngineForce = 0.f;
-
-float defaultBreakingForce = 10.f;
 float gBreakingForce = 100.f;
 
-float maxEngineForce = 1000.f;  //this should be engine/velocity dependent
+float maxEngineForce = 50.f;  //this should be engine/velocity dependent
 float maxBreakingForce = 100.f;
+float defaultBreakingForce = 1.f;
+btScalar maxMotorImpulse = 400.f;
 
-float gVehicleSteering = 0.f;
-float steeringIncrement = 0.04f;
-float steeringClamp = 0.3f;
+//the sequential impulse solver has difficulties dealing with large mass ratios (differences), between loadMass and the fork parts
+btScalar loadMass = 350.f;  //
+//btScalar loadMass = 10.f;//this should work fine for the SI solver
+
+static float gVehicleSteering = 0.f;
+static float steeringIncrement = 0.04f;
+static float steeringClamp = 1.f;
 
 // float wheelRadius = 0.5f;
 // float wheelWidth = 0.4f;
 static float wheelRadius = 0.075f;
-static float wheelWidth = 0.1f;
+static float wheelWidth = 0.05f;
 
-float wheelFriction = 1000;  //BT_LARGE_FLOAT;
-float suspensionStiffness = 20.f;
-float suspensionDamping = 2.3f;
-float suspensionCompression = 4.4f;
-float rollInfluence = 0.1f;  //1.0f;
+static float wheelFriction = 1000;  //BT_LARGE_FLOAT;
+static float suspensionStiffness = 200.f;
+static float suspensionDamping = 2.3f;
+static float suspensionCompression = 4.4f;
+static float rollInfluence = 0.1f;  //1.0f;
+static btScalar suspensionRestLength(0.05);
 
-btScalar suspensionRestLength(0.6);
+static float chassisHalfWidth = 0.1;
+static float chassisHalfHeight = 0.05;
+static float chassisHalfLength = 0.4;
 
-#define CUBE_HALF_EXTENTS 1
+static float wheelColor[4] = {0, 1, 0, 1};
+
+// #define CUBE_HALF_EXTENTS 1
 
 ////////////////////////////////////
 
 ForkLiftDemo::ForkLiftDemo(struct GUIHelperInterface* helper)
+// 	: CommonRigidBodyBase(helper),
+// 	  m_carChassis(0),
+// 	  m_guiHelper(helper),
+// 	  m_indexVertexArrays(0),
+// 	  m_vertices(0),
+// 	  m_cameraHeight(4.f),
+// 	  m_minCameraDistance(3.f),
+// 	  m_maxCameraDistance(10.f)
+// {
+// 	helper->setUpAxis(upIndex);
+
+// 	m_wheelShape = 0;
+// 	m_cameraPosition = btVector3(30, 30, 30);
+// 	m_useDefaultCamera = false;
+
+// 	// m_tuning.m_suspensionStiffness;
+// 	// m_tuning.m_suspensionCompression;
+// 	// m_tuning.m_suspensionDamping;
+// 	// m_tuning.m_frictionSlip;
+// 	// m_tuning.m_maxSuspensionTravelCm = 3.f;
+// 	// m_tuning.m_maxSuspensionForce;
+// }
 	: m_guiHelper(helper),
 	  m_carChassis(0),
 	//   m_liftBody(0),
@@ -313,9 +341,7 @@ ForkLiftDemo::~ForkLiftDemo()
 
 void ForkLiftDemo::initPhysics()
 {
-	int upAxis = 1;
-
-	m_guiHelper->setUpAxis(upAxis);
+	m_guiHelper->setUpAxis(upIndex);
 
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
@@ -343,7 +369,6 @@ void ForkLiftDemo::initPhysics()
 		m_dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 128;  //for direct solver, it is better to solve multiple objects together, small batches have high overhead
 	}
 	m_dynamicsWorld->getSolverInfo().m_globalCfm = 0.00001;
-
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
 
 	// add ground
@@ -358,6 +383,25 @@ void ForkLiftDemo::initPhysics()
 		localTrans.setOrigin(btVector3(0, -3, 0));
 
 		groundCompound->addChildShape(localTrans, groundShape);
+	}
+	// add boxes
+	{
+		btCollisionShape* shape = new btBoxShape(btVector3(5, 1, 1));
+		m_collisionShapes.push_back(shape);
+		
+		btTransform tr;
+		tr.setIdentity();
+		tr.setOrigin(btVector3(-5.0-0.5, 0, 5.0));
+		groundCompound->addChildShape(tr, shape);
+	}
+	{
+		btCollisionShape* shape = new btBoxShape(btVector3(5, 1, 1));
+		m_collisionShapes.push_back(shape);
+		
+		btTransform tr;
+		tr.setIdentity();
+		tr.setOrigin(btVector3(5.0+0.5, 0, 5.0));
+		groundCompound->addChildShape(tr, shape);
 	}
 	// add ramp
 	{
@@ -390,9 +434,6 @@ void ForkLiftDemo::initPhysics()
 	localCreateRigidBody(0, tr, groundCompound);
 
 	// add chassis
-	float chassisHalfWidth = 0.1;
-	float chassisHalfHeight = 0.05;
-	float chassisHalfLength = 0.4;
 	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength)); // width (z), height (-y), length (x)
 	m_collisionShapes.push_back(chassisShape);
 
@@ -418,12 +459,11 @@ void ForkLiftDemo::initPhysics()
 
 	const float position[4] = {0, 10, 10, 0};
 	const float quaternion[4] = {0, 0, 0, 1};
-	const float color[4] = {0, 1, 0, 1};
 	const float scaling[4] = {1, 1, 1, 1};
 
 	for (int i = 0; i < 4; i++)
 	{
-		m_wheelInstances[i] = m_guiHelper->registerGraphicsInstance(wheelGraphicsIndex, position, quaternion, color, scaling);
+		m_wheelInstances[i] = m_guiHelper->registerGraphicsInstance(wheelGraphicsIndex, position, quaternion, wheelColor, scaling);
 	}
 
 	// {
@@ -521,22 +561,21 @@ void ForkLiftDemo::initPhysics()
 
 		m_dynamicsWorld->addVehicle(m_vehicle);
 
-		float connectionHeight = 1.2f;
-
 		//choose coordinate system
 		m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
 
-		btVector3 connectionPointCS0(chassisHalfWidth - (0.3 * wheelWidth), connectionHeight, 2 * chassisHalfLength - wheelRadius);
+		float connectionHeight = 0.f;
 
 		bool isFrontWheel = true;
+		btVector3 connectionPointCS0(chassisHalfWidth + (1 * wheelWidth), connectionHeight, chassisHalfLength - wheelRadius);
 		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel);
-		connectionPointCS0 = btVector3(-chassisHalfWidth + (0.3 * wheelWidth), connectionHeight, 2 * chassisHalfLength - wheelRadius);
+		connectionPointCS0 = btVector3(-chassisHalfWidth - (1 * wheelWidth), connectionHeight, chassisHalfLength - wheelRadius);
+		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel);
 
-		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel);
-		connectionPointCS0 = btVector3(-chassisHalfWidth + (0.3 * wheelWidth), connectionHeight, -2 * chassisHalfLength + wheelRadius);
 		isFrontWheel = false;
+		connectionPointCS0 = btVector3(-chassisHalfWidth - (1 * wheelWidth), connectionHeight, -chassisHalfLength + wheelRadius);
 		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel);
-		connectionPointCS0 = btVector3(chassisHalfWidth - (0.3 * wheelWidth), connectionHeight, -2 * chassisHalfLength + wheelRadius);
+		connectionPointCS0 = btVector3(chassisHalfWidth + (1 * wheelWidth), connectionHeight, -chassisHalfLength + wheelRadius);
 		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel);
 
 		for (int i = 0; i < m_vehicle->getNumWheels(); i++)
@@ -592,8 +631,6 @@ void ForkLiftDemo::renderScene()
 	m[16];
 	int i;
 
-	btVector3 wheelColor(1, 0, 0);
-
 	btVector3 worldBoundsMin, worldBoundsMax;
 	getDynamicsWorld()->getBroadphase()->getBroadphaseAabb(worldBoundsMin, worldBoundsMax);
 
@@ -603,7 +640,9 @@ void ForkLiftDemo::renderScene()
 		m_vehicle->updateWheelTransform(i, true);
 		//draw wheels (cylinders)
 		m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix(m);
-		//		m_shapeDrawer->drawOpenGL(m,m_wheelShape,wheelColor,getDebugMode(),worldBoundsMin,worldBoundsMax);
+		// wheelColor[0] != wheelColor[0];
+		// wheelColor[1] != wheelColor[1];
+		// m_guiHelper->drawOpenGL(m_wheelInstances[i]);
 	}
 
 #if 0
@@ -804,9 +843,9 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 	bool handled = false;
 	bool isShiftPressed = m_guiHelper->getAppInterface()->m_window->isModifierKeyPressed(B3G_SHIFT);
 
-	if (state)
+	if (state) // key down
 	{
-		if (isShiftPressed)
+		if (isShiftPressed) // key down, shift pressed
 		{
 			switch (key)
 			{
@@ -850,7 +889,7 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 				}
 			}
 		}
-		else
+		else // key down, shift not pressed
 		{
 			switch (key)
 			{
@@ -885,9 +924,11 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 				case 'k':
 				case B3G_DOWN_ARROW:
 				{
-					handled = true;
+					// gEngineForce -= 0.1*maxEngineForce;
+					// gEngineForce = std::max(gEngineForce,-maxEngineForce);
 					gEngineForce = -maxEngineForce;
 					gBreakingForce = 0.f;
+					handled = true;
 					break;
 				}
 
@@ -930,15 +971,24 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 					handled = true;
 					m_useDefaultCamera = !m_useDefaultCamera;
 					break;
+
 				default:
+					// break;
+				{
+					gEngineForce -= 0.1*maxEngineForce;
+					gEngineForce = std::max(gEngineForce, 0.f);
+					gBreakingForce = 0.f;
+					handled = true;
 					break;
+				}
 			}
 		}
 	}
-	else
+	else // key up
 	{
 		switch (key)
 		{
+			case 'i':
 			case B3G_UP_ARROW:
 			{
 				// lockForkSlider();
@@ -947,6 +997,7 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 				handled = true;
 				break;
 			}
+			case 'k':
 			case B3G_DOWN_ARROW:
 			{
 				// lockForkSlider();
@@ -955,15 +1006,17 @@ bool ForkLiftDemo::keyboardCallback(int key, int state)
 				handled = true;
 				break;
 			}
+			case 'j':
 			case B3G_LEFT_ARROW:
+			case 'l':
 			case B3G_RIGHT_ARROW:
 			{
 				// lockLiftHinge();
 				handled = true;
 				break;
 			}
-			default:
 
+			default:
 				break;
 		}
 	}
