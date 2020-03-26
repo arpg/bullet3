@@ -118,7 +118,7 @@ public:
 		m_currentLimitError = 0;
 		m_currentLimitErrorHi = 0;
 		m_currentPosition = 0;
-		m_currentLimit = 0;
+		m_currentLimit = 0; // constraint limit mode: 0=free, 3=locked, 4=limited
 	}
 
 	btRotationalLimitMotor2(const btRotationalLimitMotor2& limot)

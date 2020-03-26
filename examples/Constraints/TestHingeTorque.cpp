@@ -43,6 +43,7 @@ TestHingeTorque::~TestHingeTorque()
 
 void TestHingeTorque::stepSimulation(float deltaTime)
 {
+	// apply torque to hinge constraint between 'base' link and 'linkbox' link
 	if (0)  //m_once)
 	{
 		m_once = false;
@@ -76,8 +77,8 @@ void TestHingeTorque::stepSimulation(float deltaTime)
 
 		for (int i = 0; i < m_jointFeedback.size(); i++)
 		{
-			b3Printf("Applied force at the COM/Inertial frame B[%d]:(%f,%f,%f), torque B:(%f,%f,%f)\n", i,
-
+			b3Printf("Joint %d: Force:(%f,%f,%f), Torque:(%f,%f,%f)\n",
+					 i,
 					 m_jointFeedback[i]->m_appliedForceBodyB.x(),
 					 m_jointFeedback[i]->m_appliedForceBodyB.y(),
 					 m_jointFeedback[i]->m_appliedForceBodyB.z(),
@@ -105,8 +106,8 @@ void TestHingeTorque::initPhysics()
 	int mode = btIDebugDraw::DBG_DrawWireframe + btIDebugDraw::DBG_DrawConstraints + btIDebugDraw::DBG_DrawConstraintLimits;
 	m_dynamicsWorld->getDebugDrawer()->setDebugMode(mode);
 
-	{  // create a door using hinge constraint attached to the world
-
+	// spawn arm in world using upper 'base' link and lower 'linkbox' link with (powered) hinge constrain in between and 'linksphere' end effector
+	{  
 		int numLinks = 2;
 		//    bool selfCollide = false;
 		btVector3 linkHalfExtents(0.05, 0.37, 0.1);
@@ -195,6 +196,7 @@ void TestHingeTorque::initPhysics()
 		}
 	}
 
+	// spawn wall to push sphere against
 	if (1)
 	{
 		btVector3 groundHalfExtents(1, 1, 0.2);
