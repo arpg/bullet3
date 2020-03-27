@@ -217,7 +217,9 @@ static float chassisHalfWidth = 0.1;
 static float chassisHalfHeight = 0.05;
 static float chassisHalfLength = 0.4;
 
-static float wheelColor[4] = {0, 1, 0, 1};
+static const float COLOR_R[4] = {1, 0, 0, 1};
+static const float COLOR_G[4] = {0, 1, 0, 1};
+static const float COLOR_B[4] = {0, 0, 1, 1};
 
 // #define CUBE_HALF_EXTENTS 1
 
@@ -384,54 +386,46 @@ void ForkLiftDemo::initPhysics()
 
 		groundCompound->addChildShape(localTrans, groundShape);
 	}
-	// add boxes
+	// add box obstacles
 	{
 		btCollisionShape* shape = new btBoxShape(btVector3(5, 1, 1));
 		m_collisionShapes.push_back(shape);
 		
 		btTransform tr;
 		tr.setIdentity();
-		tr.setOrigin(btVector3(-5.0-0.5, 0, 5.0));
-		groundCompound->addChildShape(tr, shape);
-	}
-	{
-		btCollisionShape* shape = new btBoxShape(btVector3(5, 1, 1));
-		m_collisionShapes.push_back(shape);
-		
-		btTransform tr;
-		tr.setIdentity();
-		tr.setOrigin(btVector3(5.0+0.5, 0, 5.0));
+		tr.setOrigin(btVector3(-5.0-0.5, 0, 0+1));
 		groundCompound->addChildShape(tr, shape);
 	}
 	// add ramp
 	{
-		btVector3 p_bbl(10.0, 	0, 		0); // -y z x
-		btVector3 p_bbr(-10.0, 	0, 		0);
-		btVector3 p_bfr(-10.0, 	0, 		4.0);
-		btVector3 p_bfl(10.0, 	0, 		4.0);
-		btVector3 p_tfl(10.0, 	2.0, 	4.0);
-		btVector3 p_tfr(-10.0, 	2.0, 	4.0);
+		btVector3 p_bbl(5.0, 	0, 		0); // -y z x
+		btVector3 p_bbr(-5.0, 	0, 		0);
+		btVector3 p_bfr(-5.0, 	0, 		4.0);
+		btVector3 p_bfl(5.0, 	0, 		4.0);
+		btVector3 p_tfl(5.0, 	2.0, 	4.0);
+		btVector3 p_tfr(-5.0, 	2.0, 	4.0);
     	btTriangleMesh *mesh = new btTriangleMesh();
 		mesh->addTriangle(p_bbl, p_bbr, p_bfr);
 		mesh->addTriangle(p_bbl, p_bfr, p_bfl);
 		mesh->addTriangle(p_bbl, p_bbr, p_tfr);
 		mesh->addTriangle(p_bbl, p_tfr, p_tfl);
-		mesh->addTriangle(p_bbl, p_bfl, p_tfl);
+		mesh->addTriangle(p_bbl, p_tfl, p_bfl);
 		mesh->addTriangle(p_bbr, p_bfr, p_tfr);
-		mesh->addTriangle(p_bfl, p_bfr, p_tfr);
-		mesh->addTriangle(p_bfl, p_tfr, p_tfl);
+		mesh->addTriangle(p_bfl, p_tfr, p_bfr);
+		mesh->addTriangle(p_bfl, p_tfl, p_tfr);
     	btCollisionShape* shape = new btBvhTriangleMeshShape(mesh,true,true);
 		m_collisionShapes.push_back(shape);
 
 		btTransform tr;
 		tr.setIdentity();
-		tr.setOrigin(btVector3(0, 0, 10.0));
+		tr.setOrigin(btVector3(5.0+0.5, 0, 0));
 		groundCompound->addChildShape(tr, shape);
 	}
 	btTransform tr;
 	tr.setIdentity();
 	// tr.setOrigin(btVector3(0, -3, 0));
-	localCreateRigidBody(0, tr, groundCompound);
+	/*m_gndBody = */localCreateRigidBody(0, tr, groundCompound);
+	// m_gndBody->setFriction(1);
 
 	// add chassis
 	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength)); // width (z), height (-y), length (x)
@@ -463,7 +457,7 @@ void ForkLiftDemo::initPhysics()
 
 	for (int i = 0; i < 4; i++)
 	{
-		m_wheelInstances[i] = m_guiHelper->registerGraphicsInstance(wheelGraphicsIndex, position, quaternion, wheelColor, scaling);
+		m_wheelInstances[i] = m_guiHelper->registerGraphicsInstance(wheelGraphicsIndex, position, quaternion, COLOR_G, scaling);
 	}
 
 	// {
@@ -622,6 +616,15 @@ void ForkLiftDemo::renderScene()
 			btVector3 pos = tr.getOrigin();
 			btQuaternion orn = tr.getRotation();
 			renderer->writeSingleInstanceTransformToCPU(pos, orn, m_wheelInstances[i]);
+
+			if (m_vehicle->getWheelInfo(i).m_raycastInfo.m_isInContact)
+			{
+				renderer->writeSingleInstanceColorToCPU(COLOR_G, m_wheelInstances[i]);
+			}
+			else
+			{
+				renderer->writeSingleInstanceColorToCPU(COLOR_B, m_wheelInstances[i]);
+			}
 		}
 	}
 
@@ -639,9 +642,7 @@ void ForkLiftDemo::renderScene()
 		//synchronize the wheels with the (interpolated) chassis worldtransform
 		m_vehicle->updateWheelTransform(i, true);
 		//draw wheels (cylinders)
-		m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix(m);
-		// wheelColor[0] != wheelColor[0];
-		// wheelColor[1] != wheelColor[1];
+		// m_vehicle->getWheelInfo(i).m_worldTransform.getOpenGLMatrix(m);
 		// m_guiHelper->drawOpenGL(m_wheelInstances[i]);
 	}
 
@@ -711,10 +712,10 @@ void ForkLiftDemo::stepSimulation(float deltaTime)
 
 	{
 		int wheelIndex = 2;
-		m_vehicle->applyEngineForce(gEngineForce, wheelIndex);
+		m_vehicle->setEngineForce(gEngineForce, wheelIndex);
 		m_vehicle->setBrake(gBreakingForce, wheelIndex);
 		wheelIndex = 3;
-		m_vehicle->applyEngineForce(gEngineForce, wheelIndex);
+		m_vehicle->setEngineForce(gEngineForce, wheelIndex);
 		m_vehicle->setBrake(gBreakingForce, wheelIndex);
 
 		wheelIndex = 0;
