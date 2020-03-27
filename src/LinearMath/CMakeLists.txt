@@ -20,6 +20,7 @@ SET(LinearMath_SRCS
 )
 
 SET(LinearMath_HDRS
+	btBezier.hpp
 	btPIDController.hpp
 	btAabbUtil2.h
 	btAlignedAllocator.h

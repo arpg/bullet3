@@ -81,18 +81,25 @@ struct btWheelInfo
 	btScalar m_suspensionRestLength1;      //const
 	btScalar m_maxSuspensionTravelCm;
 	btScalar getSuspensionRestLength() const;
-	btScalar m_wheelsRadius;              //const
 	btScalar m_suspensionStiffness;       //const
 	btScalar m_wheelsDampingCompression;  //const
 	btScalar m_wheelsDampingRelaxation;   //const
 	btScalar m_frictionSlip;
-	btScalar m_steering;
 	btScalar m_rotation;
 	btScalar m_deltaRotation;
 	btScalar m_rollInfluence;
 	btScalar m_maxSuspensionForce;
 
+	btScalar m_wheelsRadius;              //const
+	btScalar m_wheelsMass;
+	btScalar m_wheelsWidth;
+
+	btScalar m_steering;
+	btScalar m_steeringClamp;
+
 	btScalar m_engineForce;
+	btScalar m_maxEngineForce;
+	btScalar m_minEngineForce;
 
 	btScalar m_brake;
 
@@ -108,7 +115,6 @@ struct btWheelInfo
 		m_suspensionRestLength1 = ci.m_suspensionRestLength;
 		m_maxSuspensionTravelCm = ci.m_maxSuspensionTravelCm;
 
-		m_wheelsRadius = ci.m_wheelRadius;
 		m_suspensionStiffness = ci.m_suspensionStiffness;
 		m_wheelsDampingCompression = ci.m_wheelsDampingCompression;
 		m_wheelsDampingRelaxation = ci.m_wheelsDampingRelaxation;
@@ -116,14 +122,24 @@ struct btWheelInfo
 		m_wheelDirectionCS = ci.m_wheelDirectionCS;
 		m_wheelAxleCS = ci.m_wheelAxleCS;
 		m_frictionSlip = ci.m_frictionSlip;
-		m_steering = btScalar(0.);
-		m_engineForce = btScalar(0.);
 		m_rotation = btScalar(0.);
 		m_deltaRotation = btScalar(0.);
-		m_brake = btScalar(0.);
 		m_rollInfluence = btScalar(0.1);
 		m_bIsFrontWheel = ci.m_bIsFrontWheel;
 		m_maxSuspensionForce = ci.m_maxSuspensionForce;
+
+		m_wheelsRadius = ci.m_wheelRadius;
+		m_wheelsMass = btScalar(1.);;
+		m_wheelsWidth = btScalar(1.);;
+
+		m_steering = btScalar(0.);
+		m_steeringClamp = btScalar(1.);
+
+		m_engineForce = btScalar(0.);
+		m_maxEngineForce = btScalar(500.);
+		m_minEngineForce = btScalar(-500.);
+
+		m_brake = btScalar(0.);
 	}
 
 	void updateWheel(const btRigidBody& chassis, RaycastInfo& raycastInfo);
