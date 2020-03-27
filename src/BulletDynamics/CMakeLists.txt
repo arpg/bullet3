@@ -29,6 +29,7 @@ SET(BulletDynamics_SRCS
 	Dynamics/btSimpleDynamicsWorld.cpp
 #	Dynamics/Bullet-C-API.cpp
 	Vehicle/btRaycastVehicle.cpp
+	Vehicle/btHinge2Vehicle.cpp
 	Vehicle/btWheelInfo.cpp
 	Featherstone/btMultiBody.cpp
 	Featherstone/btMultiBodyConstraint.cpp
@@ -85,6 +86,7 @@ SET(Dynamics_HDRS
 	Dynamics/btRigidBody.h
 )
 SET(Vehicle_HDRS
+	Vehicle/btHinge2Vehicle.h
 	Vehicle/btRaycastVehicle.h
 	Vehicle/btVehicleRaycaster.h
 	Vehicle/btWheelInfo.h

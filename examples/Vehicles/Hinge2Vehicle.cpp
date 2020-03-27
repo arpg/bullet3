@@ -46,6 +46,8 @@ class btCollisionShape;
 
 #include "../CommonInterfaces/CommonRigidBodyBase.h"
 
+#include "LinearMath/btBezier.hpp"
+#include "BulletDynamics/Vehicle/btHinge2Vehicle.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -59,11 +61,13 @@ class btCollisionShape;
 #define M_PI_4 0.785398163397448309616
 #endif
 
-#define linVel2WheelVel(radius,linvel) linvel/radius
+#define linVel2AngVel(linvel, radius) linvel/radius
 
 class Hinge2Vehicle : public CommonRigidBodyBase
 {
 public:
+
+
 	// static float calcQuadBezier(float* pts, float tau);
 	// static btVector3 calcCubicBezier(btVector3* pts, float tau);
 	// static float calcCubicBezier(float* pts, float tau);
@@ -71,10 +75,10 @@ public:
 	// static float calcQuadBezier(float* pts, float tau);
 	// static btVector3 calcCubicBezier(btVector3* pts, float tau);
 	// static float calcCubicBezier(float* pts, float tau);
-	template <typename T> 
-	static T calcLinearBezier(T* pts, float tau);
-	template <typename T> 
-	static T calcNDBezier(T* pts, float tau, int degree);
+
+	btHinge2Vehicle* m_vehicle;
+
+	btRaycastVehicle::btVehicleTuning m_tuning;
 
 	/* extra stuff*/
 	btVector3 m_cameraPosition;
@@ -87,8 +91,8 @@ public:
 	// int m_wheelInstances[4];
 
 	// std::vector<btHinge2Constraint*> m_wheels;
-	btTypedConstraint* m_wheels[4];
-	void setMotorTargets();
+	// btTypedConstraint* m_wheels[4];
+	// void setMotorTargets();
 
 	bool m_useDefaultCamera;
 	//----------------------------
@@ -97,7 +101,7 @@ public:
 
 	btVector3* m_vertices;
 
-	btCollisionShape* m_wheelShape;
+	// btCollisionShape* m_wheelShape;
 
 	float m_cameraHeight;
 
@@ -151,19 +155,21 @@ public:
 static const int rightIndex = 0;
 static const int upIndex = 1;
 static const int forwardIndex = 2;
+static btVector3 wheelDirectionCS0(0, -1, 0);
+static btVector3 wheelAxleCS(-1, 0, 0);
 
-static const int frontRightWheelIndex = 0;
-static const int frontLeftWheelIndex = 1;
-static const int backLeftWheelIndex = 2;
-static const int backRightWheelIndex = 3;
+// static const int frontRightWheelIndex = 0;
+// static const int frontLeftWheelIndex = 1;
+// static const int backLeftWheelIndex = 2;
+// static const int backRightWheelIndex = 3;
 
-// 6 DOF hinge constraint indices
-// const int strafeIndex = 0; // lin along x
-// const int lungeIndex = 2; // lin along z
-static const int suspensionIndex = 2; // lin along y
-static const int driveIndex = 3; // rot along x (right, principle axis) 
-// const int wobbleIndex = 4; // rot along z (forward)
-static const int steeringIndex = 5; // rot along y (up)
+// // 6 DOF hinge constraint indices
+// // const int strafeIndex = 0; // lin along x
+// // const int lungeIndex = 2; // lin along z
+// static const int suspensionIndex = 2; // lin along y
+// static const int driveIndex = 3; // rot along x (right, principle axis) 
+// // const int wobbleIndex = 4; // rot along z (forward)
+// static const int steeringIndex = 5; // rot along y (up)
 
 static bool useMCLPSolver = false;  //true;
 
@@ -192,11 +198,11 @@ static float wheelRadius = 0.075f;
 static float wheelWidth = 0.05f;
 
 //float	wheelFriction = 1000;//BT_LARGE_FLOAT;
-static float suspensionStiffness = 700.f;
+static float suspensionStiffness = 2000.f;
 static float suspensionDamping = 10.3f;
 //float	suspensionCompression = 4.4f;
 //float	rollInfluence = 0.1f;//1.0f;
-//btScalar suspensionRestLength(0.6);
+btScalar suspensionRestLength(0.6);
 
 static float chassisHalfWidth = 0.1;
 static float chassisHalfHeight = 0.05;
@@ -204,8 +210,8 @@ static float chassisHalfLength = 0.4;
 
 static float fps = 0.f;
 
-static btScalar cfm = 0.9f;
-static btScalar erp = 0.9f;
+// static btScalar cfm = 0.9f;
+// static btScalar erp = 0.9f;
 
 // static float throttle_tau;
 static bool throttle_up = false;
@@ -231,7 +237,7 @@ Hinge2Vehicle::Hinge2Vehicle(struct GUIHelperInterface* helper)
 {
 	helper->setUpAxis(upIndex);
 
-	m_wheelShape = 0;
+	// m_wheelShape = 0;
 	m_cameraPosition = btVector3(30, 30, 30);
 	m_useDefaultCamera = false;
 }
@@ -279,8 +285,8 @@ void Hinge2Vehicle::exitPhysics()
 	delete m_dynamicsWorld;
 	m_dynamicsWorld = 0;
 
-	delete m_wheelShape;
-	m_wheelShape = 0;
+	// delete m_wheelShape;
+	// m_wheelShape = 0;
 
 	//delete solver
 	delete m_solver;
@@ -314,8 +320,59 @@ Hinge2Vehicle::~Hinge2Vehicle()
 static void preTickCallback(btDynamicsWorld* world, btScalar timeStep)
 {
 	Hinge2Vehicle* info = (Hinge2Vehicle*)world->getWorldUserInfo();
-	info->setMotorTargets();
-	fps = 1/timeStep;
+	btHinge2Vehicle* veh = info->m_vehicle;
+	int fl, fr, bl, br;
+	fl = veh->getFrontLeftWheel();
+	fr = veh->getFrontRightWheel();
+	bl = veh->getBackLeftWheel();
+	br = veh->getBackRightWheel();
+
+	if (throttle_up)
+	{
+		btScalar force = veh->getMaxEngineForce(fl);
+		veh->setEngineForce(force, true);
+		veh->setEngineForce(0, false);
+		veh->setBrake(0, true);
+		veh->setBrake(0, false);
+	}
+	else if (throttle_down)
+	{
+		btScalar force = veh->getMinEngineForce(fl);
+		veh->setEngineForce(force, true);
+		veh->setEngineForce(0, false);
+		veh->setBrake(0, true);
+		veh->setBrake(0, false);
+	}
+	else
+	{
+		veh->setEngineForce(0, true);
+		veh->setEngineForce(0, false);
+		veh->setBrake(0, true);
+		veh->setBrake(100, false);
+	}
+
+	if (steer_left)
+	{
+		btScalar delta = -0.025;
+		veh->setSteeringValue(veh->getSteeringValue(fl)+delta, true);
+	}
+	else if (steer_right)
+	{
+		btScalar delta = 0.025;
+		veh->setSteeringValue(veh->getSteeringValue(fl)+delta, true);
+	}
+	else
+	{
+		btScalar delta = -1*veh->getSteeringValue(fl)*0.05;
+		veh->setSteeringValue(veh->getSteeringValue(fl)+delta, true);
+	}
+	
+	printf("Setting\n  engine forces FL %f FR %f BL %f BR %f\n  steering F %f B %f\n",
+		veh->getEngineForce(fl), veh->getEngineForce(fr),
+		veh->getEngineForce(bl), veh->getEngineForce(br),
+		veh->getSteeringValue(fl), veh->getSteeringValue(bl));
+
+	veh->applyForces(true);
 }
 
 // static void postTickCallback(btDynamicsWorld* world, btScalar timeStep)
@@ -328,20 +385,20 @@ static void preTickCallback(btDynamicsWorld* world, btScalar timeStep)
 
 void Hinge2Vehicle::initPhysics()
 {
-	{  // create a slider to change the number of pendula
-		SliderParams slider("CFM", &cfm);
-		slider.m_minVal = 0;
-		slider.m_maxVal = 3;
-		slider.m_clampToIntegers = false;
-		m_guiHelper->getParameterInterface()->registerSliderFloatParameter(slider);
-	}
-	{  // create a slider to change the number of pendula
-		SliderParams slider("ERP", &erp);
-		slider.m_minVal = 0;
-		slider.m_maxVal = 3;
-		slider.m_clampToIntegers = false;
-		m_guiHelper->getParameterInterface()->registerSliderFloatParameter(slider);
-	}
+	// {  // create a slider to change the number of pendula
+	// 	SliderParams slider("CFM", &cfm);
+	// 	slider.m_minVal = 0;
+	// 	slider.m_maxVal = 3;
+	// 	slider.m_clampToIntegers = false;
+	// 	m_guiHelper->getParameterInterface()->registerSliderFloatParameter(slider);
+	// }
+	// {  // create a slider to change the number of pendula
+	// 	SliderParams slider("ERP", &erp);
+	// 	slider.m_minVal = 0;
+	// 	slider.m_maxVal = 3;
+	// 	slider.m_clampToIntegers = false;
+	// 	m_guiHelper->getParameterInterface()->registerSliderFloatParameter(slider);
+	// }
 
 	m_guiHelper->setUpAxis(upIndex);
 
@@ -449,99 +506,140 @@ void Hinge2Vehicle::initPhysics()
 	const btScalar wheelMass = 1.0f;
 	m_carChassis = localCreateRigidBody(chassisMass, tr, compound);  //chassisShape);
 
-	m_wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
+	btCollisionShape* wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
 
-	btVector3 wheelPos[4];
-	wheelPos[frontRightWheelIndex] = 	btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	btScalar(chassisHalfLength-wheelRadius)		)-cog;
-	wheelPos[frontLeftWheelIndex] = 	btVector3(	btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	btScalar(chassisHalfLength-wheelRadius)		)-cog;
-	wheelPos[backLeftWheelIndex] = 		btVector3(	btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog;
-	wheelPos[backRightWheelIndex] = 	btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog;
+	// btVector3 wheelPos[4];
+	// wheelPos[frontRightWheelIndex] = 	btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	btScalar(chassisHalfLength-wheelRadius)		)-cog;
+	// wheelPos[frontLeftWheelIndex] = 	btVector3(	btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	btScalar(chassisHalfLength-wheelRadius)		)-cog;
+	// wheelPos[backLeftWheelIndex] = 		btVector3(	btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog;
+	// wheelPos[backRightWheelIndex] = 	btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(FALLHEIGHT-0-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog;
 
-	for (int i = 0; i < 4; i++)
+	// create vehicle
 	{
-		// create a Hinge2 joint
-		// create two rigid bodies
-		// static bodyA (parent) on top:
+		m_vehicle = new btHinge2Vehicle(m_dynamicsWorld, m_tuning, m_carChassis);
+		m_dynamicsWorld->addVehicle(m_vehicle);
 
-		btRigidBody* pBodyA = this->m_carChassis;
-		pBodyA->setActivationState(DISABLE_DEACTIVATION);
+		//choose coordinate system
+		m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
 
-		// dynamic bodyB (child) below it :
-		btTransform tr;
-		tr.setIdentity();
-		tr.setOrigin(wheelPos[i]);
-		btVector3 anchor = tr.getOrigin();
+		float connectionHeight = 0.f;
 
-		// if (i==frontLeftWheelIndex || i==backLeftWheelIndex)
-		// {
-		// 	anchor += btVector3(-0.05f,0.f,0.f);
-		// }
-		// else
-		// {
-		// 	anchor += btVector3(0.05f,0.f,0.f);
-		// }
-		
-		btRigidBody* pBodyB = createRigidBody(wheelMass, tr, m_wheelShape);
-		pBodyB->setFriction(1);
-		pBodyB->setActivationState(DISABLE_DEACTIVATION);
+		// front left
+		bool isFrontWheel = true;
+		btVector3 connectionPointCS0(chassisHalfWidth + (1 * wheelWidth), connectionHeight+FALLHEIGHT, chassisHalfLength - wheelRadius);
+		connectionPointCS0 -= cog;
+		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel, wheelMass, wheelShape);
+		// front right
+		connectionPointCS0 = btVector3(-chassisHalfWidth - (1 * wheelWidth), connectionHeight+FALLHEIGHT, chassisHalfLength - wheelRadius);
+		connectionPointCS0 -= cog;
+		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel, wheelMass, wheelShape);
 
-		// add some data to build constraint frames
-		btVector3 parentAxis(0.f, 1.f, 0.f);
-		btVector3 childAxis(1.f, 0.f, 0.f);
-		btHinge2Constraint* pHinge2 = new btHinge2Constraint(*pBodyA, *pBodyB, anchor, parentAxis, childAxis);
-		m_wheels[i] = pHinge2;
+		// back right
+		isFrontWheel = false;
+		connectionPointCS0 = btVector3(-chassisHalfWidth - (1 * wheelWidth), connectionHeight+FALLHEIGHT, -chassisHalfLength + wheelRadius);
+		connectionPointCS0 -= cog;
+		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel, wheelMass, wheelShape);
+		// back left
+		connectionPointCS0 = btVector3(chassisHalfWidth + (1 * wheelWidth), connectionHeight+FALLHEIGHT, -chassisHalfLength + wheelRadius);
+		connectionPointCS0 -= cog;
+		m_vehicle->addWheel(connectionPointCS0, wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, m_tuning, isFrontWheel, wheelMass, wheelShape);
 
-		//m_guiHelper->get2dCanvasInterface();
-		
-		// add constraint to world
-		m_dynamicsWorld->addConstraint(pHinge2, true);
-
-		// Drive engine.
-		pHinge2->enableMotor(driveIndex, true);
-		pHinge2->setMaxMotorForce(driveIndex, maxMotorForce);
-		pHinge2->setTargetVelocity(driveIndex, 0);
-
-		// Steering engine.
-		pHinge2->enableMotor(steeringIndex, true);
-		// pHinge2->setMaxMotorForce(5, 1000);
-		// pHinge2->setTargetVelocity(5, 0);
-		pHinge2->setServo(steeringIndex, true);
-		pHinge2->setTargetVelocity(steeringIndex, 100);
-		pHinge2->setMaxMotorForce(steeringIndex, 1000);
-		pHinge2->setServoTarget(steeringIndex, 0);
-
-		// suspension
-		pHinge2->setParam( BT_CONSTRAINT_CFM, cfm, suspensionIndex );
-		pHinge2->setParam( BT_CONSTRAINT_ERP, erp, suspensionIndex );
-		pHinge2->setDamping( suspensionIndex, suspensionDamping, false);
-		pHinge2->setStiffness( suspensionIndex, suspensionStiffness, false);
-
-		// btVector3 linLowerLimits(FLT_MAX,FLT_MAX,FLT_MAX);
-		// btVector3 linUpperLimits(FLT_MIN,FLT_MIN,FLT_MIN);
-		// linLowerLimits[suspensionIndex] = -2*2*wheelRadius;
-		// linUpperLimits[suspensionIndex] = 0.9*wheelRadius;
-		// pHinge2->setLinearLowerLimit(linLowerLimits);
-		// pHinge2->setLinearUpperLimit(linUpperLimits);
-		
-		// btVector3 angLowerLimits(FLT_MAX,FLT_MAX,FLT_MAX);
-		// btVector3 angUpperLimits(FLT_MIN,FLT_MIN,FLT_MIN);
-		// // if (i==frontRightWheelIndex || i==frontLeftWheelIndex)
-		// // {
-		// 	angLowerLimits[steeringIndex-3] = -1.f;
-		// 	angUpperLimits[steeringIndex-3] = 1.f;
-		// // }
-		// // else
-		// // {
-		// // 	angLowerLimits[steeringIndex-3] = 0.f;
-		// // 	angUpperLimits[steeringIndex-3] = 0.f;
-		// // }
-		// pHinge2->setAngularLowerLimit(angLowerLimits);
-		// pHinge2->setAngularUpperLimit(angUpperLimits);
-
-		pHinge2->setDbgDrawSize(btScalar(5.f));
-	
-		// pHinge2->setEquilibriumPoint();
+		for (int i = 0; i < m_vehicle->getNumWheels(); i++)
+		{
+			btWheelInfo& wheel = m_vehicle->getWheelInfo(i);
+			wheel.m_suspensionStiffness = suspensionStiffness;
+			wheel.m_wheelsDampingRelaxation = suspensionDamping;
+			// wheel.m_wheelsDampingCompression = suspensionCompression;
+			wheel.m_frictionSlip = 1.f;
+			// wheel.m_rollInfluence = rollInfluence;
+		}
 	}
+
+	// for (int i = 0; i < 4; i++)
+	// {
+	// 	// create a Hinge2 joint
+	// 	// create two rigid bodies
+	// 	// static bodyA (parent) on top:
+
+	// 	btRigidBody* pBodyA = this->m_carChassis;
+	// 	pBodyA->setActivationState(DISABLE_DEACTIVATION);
+
+	// 	// dynamic bodyB (child) below it :
+	// 	btTransform tr;
+	// 	tr.setIdentity();
+	// 	tr.setOrigin(wheelPos[i]);
+	// 	btVector3 anchor = tr.getOrigin();
+
+	// 	// if (i==frontLeftWheelIndex || i==backLeftWheelIndex)
+	// 	// {
+	// 	// 	anchor += btVector3(-0.05f,0.f,0.f);
+	// 	// }
+	// 	// else
+	// 	// {
+	// 	// 	anchor += btVector3(0.05f,0.f,0.f);
+	// 	// }
+		
+	// 	btRigidBody* pBodyB = createRigidBody(wheelMass, tr, m_wheelShape);
+	// 	pBodyB->setFriction(1);
+	// 	pBodyB->setActivationState(DISABLE_DEACTIVATION);
+
+	// 	// add some data to build constraint frames
+	// 	btVector3 parentAxis(0.f, 1.f, 0.f);
+	// 	btVector3 childAxis(1.f, 0.f, 0.f);
+	// 	btHinge2Constraint* pHinge2 = new btHinge2Constraint(*pBodyA, *pBodyB, anchor, parentAxis, childAxis);
+	// 	m_wheels[i] = pHinge2;
+
+	// 	//m_guiHelper->get2dCanvasInterface();
+		
+	// 	// add constraint to world
+	// 	m_dynamicsWorld->addConstraint(pHinge2, true);
+
+	// 	// Drive engine.
+	// 	pHinge2->enableMotor(driveIndex, true);
+	// 	pHinge2->setMaxMotorForce(driveIndex, maxMotorForce);
+	// 	pHinge2->setTargetVelocity(driveIndex, 0);
+
+	// 	// Steering engine.
+	// 	pHinge2->enableMotor(steeringIndex, true);
+	// 	// pHinge2->setMaxMotorForce(5, 1000);
+	// 	// pHinge2->setTargetVelocity(5, 0);
+	// 	pHinge2->setServo(steeringIndex, true);
+	// 	pHinge2->setTargetVelocity(steeringIndex, 100);
+	// 	pHinge2->setMaxMotorForce(steeringIndex, 1000);
+	// 	pHinge2->setServoTarget(steeringIndex, 0);
+
+	// 	// suspension
+	// 	pHinge2->setParam( BT_CONSTRAINT_CFM, cfm, suspensionIndex );
+	// 	pHinge2->setParam( BT_CONSTRAINT_ERP, erp, suspensionIndex );
+	// 	pHinge2->setDamping( suspensionIndex, suspensionDamping, false);
+	// 	pHinge2->setStiffness( suspensionIndex, suspensionStiffness, false);
+
+	// 	// btVector3 linLowerLimits(FLT_MAX,FLT_MAX,FLT_MAX);
+	// 	// btVector3 linUpperLimits(FLT_MIN,FLT_MIN,FLT_MIN);
+	// 	// linLowerLimits[suspensionIndex] = -2*2*wheelRadius;
+	// 	// linUpperLimits[suspensionIndex] = 0.9*wheelRadius;
+	// 	// pHinge2->setLinearLowerLimit(linLowerLimits);
+	// 	// pHinge2->setLinearUpperLimit(linUpperLimits);
+		
+	// 	// btVector3 angLowerLimits(FLT_MAX,FLT_MAX,FLT_MAX);
+	// 	// btVector3 angUpperLimits(FLT_MIN,FLT_MIN,FLT_MIN);
+	// 	// // if (i==frontRightWheelIndex || i==frontLeftWheelIndex)
+	// 	// // {
+	// 	// 	angLowerLimits[steeringIndex-3] = -1.f;
+	// 	// 	angUpperLimits[steeringIndex-3] = 1.f;
+	// 	// // }
+	// 	// // else
+	// 	// // {
+	// 	// // 	angLowerLimits[steeringIndex-3] = 0.f;
+	// 	// // 	angUpperLimits[steeringIndex-3] = 0.f;
+	// 	// // }
+	// 	// pHinge2->setAngularLowerLimit(angLowerLimits);
+	// 	// pHinge2->setAngularUpperLimit(angUpperLimits);
+
+	// 	pHinge2->setDbgDrawSize(btScalar(5.f));
+	
+	// 	// pHinge2->setEquilibriumPoint();
+	// }
 
 	resetForklift();
 
@@ -629,118 +727,98 @@ void Hinge2Vehicle::renderScene()
 // 	return ( (1-tau)*b1 + tau*b2 );
 // }
 
-template <typename T>
-T Hinge2Vehicle::calcLinearBezier(T* pts, float tau)
-{
-	return (1-tau)*pts[0] + tau*pts[1];
-}
+// void Hinge2Vehicle::setMotorTargets()
+// {
+// 	static float throttle_tau;
+// 	if (throttle_up)
+// 	{
+// 		// if (gTargetVelocity<0)
+// 		// {
+// 		// 	throttle_tau = 0;
+// 		// }
+// 		// else
+// 		{
+// 			throttle_tau+=0.1;
+// 			throttle_tau = std::min(throttle_tau,1.f);
+// 		}
+// 		// gTargetVelocity = linVel2WheelVel(wheelRadius, calcCubicBezier(&vel_profile[0],throttle_tau));
+// 		gTargetVelocity = btBezier::calcBezier<float>(&vel_profile[0],throttle_tau,vel_profile.size()-1);
 
-template <typename T>
-T Hinge2Vehicle::calcNDBezier(T* pts, float tau, int degree)
-{
-	assert(tau>=0 && tau<=1);
-	assert(degree>=0);
-	
-	T b1, b2;
-	if (degree==1)
-	{
-		return calcLinearBezier<T>(pts, tau);
-	}
-	else
-	{
-		b1 = calcNDBezier<T>(pts,tau, degree-1);
-		b2 = calcNDBezier<T>(pts+1,tau, degree-1);
-	}
-	return ( (1-tau)*b1 + tau*b2 );
-}
-
-void Hinge2Vehicle::setMotorTargets()
-{
-	static float throttle_tau;
-	if (throttle_up)
-	{
-		// if (gTargetVelocity<0)
-		// {
-		// 	throttle_tau = 0;
-		// }
-		// else
-		{
-			throttle_tau+=0.1;
-			throttle_tau = std::min(throttle_tau,1.f);
-		}
-		// gTargetVelocity = linVel2WheelVel(wheelRadius, calcCubicBezier(&vel_profile[0],throttle_tau));
-		gTargetVelocity = calcNDBezier<float>(&vel_profile[0],throttle_tau,vel_profile.size()-1);
-
-		printf("throttle up %f\n",throttle_tau);
-	}
-	else if (throttle_down)
-	{
-		// if (gTargetVelocity>0)
-		// {
-		// 	throttle_tau = 0;
-		// }
-		// else
-		{
-			throttle_tau-=0.1;
-			throttle_tau = std::max(throttle_tau,-1.f);
-		}
-		// gTargetVelocity = -linVel2WheelVel(wheelRadius, calcCubicBezier(&vel_profile[0],throttle_tau));
-		gTargetVelocity = -calcNDBezier<float>(&vel_profile[0],-throttle_tau,vel_profile.size()-1);
+// 		printf("throttle up %f\n",throttle_tau);
+// 	}
+// 	else if (throttle_down)
+// 	{
+// 		// if (gTargetVelocity>0)
+// 		// {
+// 		// 	throttle_tau = 0;
+// 		// }
+// 		// else
+// 		{
+// 			throttle_tau-=0.1;
+// 			throttle_tau = std::max(throttle_tau,-1.f);
+// 		}
+// 		// gTargetVelocity = -linVel2WheelVel(wheelRadius, calcCubicBezier(&vel_profile[0],throttle_tau));
+// 		gTargetVelocity = -btBezier::calcBezier<float>(&vel_profile[0],-throttle_tau,vel_profile.size()-1);
 		
-		printf("throttle down %f\n",throttle_tau);
-	}
-	else
-	{
-		throttle_tau = 0;
-		gTargetVelocity = 0;
+// 		printf("throttle down %f\n",throttle_tau);
+// 	}
+// 	else
+// 	{
+// 		throttle_tau = 0;
+// 		gTargetVelocity = 0;
 
-		printf("throttle off %f\n",throttle_tau);
-	}
-	printf("Target vel: %f\n",gTargetVelocity);
+// 		printf("throttle off %f\n",throttle_tau);
+// 	}
+// 	printf("Target vel: %f\n",gTargetVelocity);
 
-	// print vel profile
-	// float t = 0.;
-	// while (t<1.1)
-	// {
-	// 	printf("Target vel at %f: %f\n",t,calcNDBezier<float>(&vel_profile[0], t, vel_profile.size()-1));
-	// 	t+=.1;
-	// }	
+// 	// print vel profile
+// 	// float t = 0.;
+// 	// while (t<1.1)
+// 	// {
+// 	// 	printf("Target vel at %f: %f\n",t,btBezier::calcBezier<float>(&vel_profile[0], t, vel_profile.size()-1));
+// 	// 	t+=.1;
+// 	// }	
 	
-	if (steer_left)
-	{
-		gVehicleSteering -= 0.025;
-		gVehicleSteering = std::max(gVehicleSteering,-0.5f);
+// 	if (steer_left)
+// 	{
+// 		gVehicleSteering -= 0.025;
+// 		gVehicleSteering = std::max(gVehicleSteering,-0.5f);
 
-		printf("steer left %f\n",gVehicleSteering);
-	}
-	else if (steer_right)
-	{
-		gVehicleSteering += 0.025;
-		gVehicleSteering = std::min(gVehicleSteering,0.5f);
+// 		printf("steer left %f\n",gVehicleSteering);
+// 	}
+// 	else if (steer_right)
+// 	{
+// 		gVehicleSteering += 0.025;
+// 		gVehicleSteering = std::min(gVehicleSteering,0.5f);
 
-		printf("steer right %f\n",gVehicleSteering);
-	}
-	else
-	{
-		gVehicleSteering *= 0.96;
+// 		printf("steer right %f\n",gVehicleSteering);
+// 	}
+// 	else
+// 	{
+// 		gVehicleSteering *= 0.96;
 
-		printf("steer straight %f\n",gVehicleSteering);
-	}
+// 		printf("steer straight %f\n",gVehicleSteering);
+// 	}
 
-	static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->setTargetVelocity(driveIndex, -linVel2WheelVel(wheelRadius,gTargetVelocity));
-	static_cast<btHinge2Constraint*>(m_wheels[backRightWheelIndex])->setTargetVelocity(driveIndex, -linVel2WheelVel(wheelRadius,gTargetVelocity));
-	static_cast<btHinge2Constraint*>(m_wheels[frontLeftWheelIndex])->setTargetVelocity(driveIndex, -linVel2WheelVel(wheelRadius,gTargetVelocity));
-	static_cast<btHinge2Constraint*>(m_wheels[frontRightWheelIndex])->setTargetVelocity(driveIndex, -linVel2WheelVel(wheelRadius,gTargetVelocity));
+// 	static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->setTargetVelocity(driveIndex, -linVel2AngVel(gTargetVelocity, wheelRadius));
+// 	static_cast<btHinge2Constraint*>(m_wheels[backRightWheelIndex])->setTargetVelocity(driveIndex, -linVel2AngVel(gTargetVelocity, wheelRadius));
+// 	static_cast<btHinge2Constraint*>(m_wheels[frontLeftWheelIndex])->setTargetVelocity(driveIndex, -linVel2AngVel(gTargetVelocity, wheelRadius));
+// 	static_cast<btHinge2Constraint*>(m_wheels[frontRightWheelIndex])->setTargetVelocity(driveIndex, -linVel2AngVel(gTargetVelocity, wheelRadius));
 
-	static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->setServoTarget(steeringIndex, 0);
-	static_cast<btHinge2Constraint*>(m_wheels[backRightWheelIndex])->setServoTarget(steeringIndex, 0);
-	static_cast<btHinge2Constraint*>(m_wheels[frontLeftWheelIndex])->setServoTarget(steeringIndex, gVehicleSteering);
-	static_cast<btHinge2Constraint*>(m_wheels[frontRightWheelIndex])->setServoTarget(steeringIndex, gVehicleSteering);
-}
+// 	static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->setServoTarget(steeringIndex, 0);
+// 	static_cast<btHinge2Constraint*>(m_wheels[backRightWheelIndex])->setServoTarget(steeringIndex, 0);
+// 	static_cast<btHinge2Constraint*>(m_wheels[frontLeftWheelIndex])->setServoTarget(steeringIndex, gVehicleSteering);
+// 	static_cast<btHinge2Constraint*>(m_wheels[frontRightWheelIndex])->setServoTarget(steeringIndex, gVehicleSteering);
+// }
 
 void Hinge2Vehicle::stepSimulation(float deltaTime)
 {
 	printf("FPS: %f\n",1/deltaTime);
+	printf("Torques\n  FL %f\n  FR %f\n  BL %f\n  BR %f\n",
+		m_vehicle->getTorque(m_vehicle->getFrontLeftWheel()).x(),
+		m_vehicle->getTorque(m_vehicle->getFrontRightWheel()).x(),
+		m_vehicle->getTorque(m_vehicle->getBackLeftWheel()).x(),
+		m_vehicle->getTorque(m_vehicle->getBackRightWheel()).x() );
 
 	float dt = deltaTime;
 
