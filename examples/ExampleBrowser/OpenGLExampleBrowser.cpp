@@ -1169,6 +1169,7 @@ void OpenGLExampleBrowser::update(float deltaTime)
 	assert(glGetError() == GL_NO_ERROR);
 	s_instancingRenderer->init();
 	DrawGridData dg;
+	dg.gridSize = 100;
 	dg.upAxis = s_app->getUpAxis();
 
 	{
