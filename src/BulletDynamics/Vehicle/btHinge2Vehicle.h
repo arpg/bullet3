@@ -11,163 +11,51 @@
 #ifndef BT_HINGE2VEHICLE_H
 #define BT_HINGE2VEHICLE_H
 
-#include "BulletDynamics/Vehicle/btRaycastVehicle.h"
+#define HINGE2_LIN_X_IDX 0
+#define HINGE2_LIN_Y_IDX 2
+#define HINGE2_LIN_Z_IDX 1
+#define HINGE2_ANG_X_IDX HINGE2_LIN_X_IDX+3
+#define HINGE2_ANG_Y_IDX HINGE2_LIN_Y_IDX+3
+#define HINGE2_ANG_Z_IDX HINGE2_LIN_Z_IDX+3
 
-#include "btBulletCollisionCommon.h"
-#include "btBulletDynamicsCommon.h"
+#define HINGE2_SUSPENSION_IDX HINGE2_LIN_Y_IDX
+#define HINGE2_STEERING_IDX HINGE2_ANG_Y_IDX
+#define HINGE2_DRIVE_IDX HINGE2_ANG_X_IDX
 
-#include "BulletDynamics/MLCPSolvers/btDantzigSolver.h"
-#include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
-#include "BulletDynamics/MLCPSolvers/btMLCPSolver.h"
+#include "BulletDynamics/Vehicle/btWheelVehicle.h"
+#include "BulletDynamics/ConstraintSolver/btHinge2Constraint.h"
 
-#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
-
-#define HINGE2_SUSPENSION_IDX 2
-#define HINGE2_DRIVE_IDX 3
-#define HINGE2_STEERING_IDX 5
-
-///rayCast vehicle, very special constraint that turn a rigidbody into a vehicle.
-class btHinge2Vehicle : public btRaycastVehicle
+class btHinge2Vehicle : public btWheelVehicle
 {
 protected:
-	btDiscreteDynamicsWorld* m_dynamicsWorld;
-	btTypedConstraint* m_hinges[4];
-
-	// bool m_useMCLPSolver = false;  //true;
-
-	float m_CFM = 0.9;
-	float m_ERP = 0.9;
-
-	virtual inline 
-	btHinge2Constraint* getHinge2(int i) { return static_cast<btHinge2Constraint*>(m_hinges[i]); }
+	btAlignedObjectArray<btHinge2Constraint*> m_constraints;
 
 public:
+	// struct btHinge2VehicleConfig{
+	// 	btScalar cfm=0.9, 
+	// 		erp=0.9;
+
+	// } m_config;	
+
 	//constructor to create a car from an existing rigidbody
-	btHinge2Vehicle(btDiscreteDynamicsWorld* world, const btVehicleTuning& tuning, btRigidBody* chassis);
+	btHinge2Vehicle(btRigidBody* chassisBody);
 
 	virtual ~btHinge2Vehicle();
 
 	///btActionInterface interface
-	virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step)
-	{
-		// (void)collisionWorld;
-		updateVehicle(step);
-	}
-
-	///btActionInterface interface
-	virtual void debugDraw(btIDebugDraw* debugDrawer);
-
-	virtual void applyForces(bool isFrontWheelDrive = true);
-
+	// virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step);
 	virtual void updateVehicle(btScalar step);
+	// virtual void debugDraw(btIDebugDraw* debugDrawer) = 0;
 
-	virtual btWheelInfo& addWheel(
-		const btVector3& connectionPointCS0, 
-		const btVector3& wheelDirectionCS0, 
-		const btVector3& wheelAxleCS, 
-		btScalar suspensionRestLength, 
-		btScalar wheelRadius, 
-		const btVehicleTuning& tuning, 
-		bool isFrontWheel,
-		btScalar wheelMass,
-		btCollisionShape* wheelShape );
+	virtual btHinge2Constraint* addWheel(btRigidBody* wheelBody);
+	virtual std::string wheel2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
+	virtual std::string constraint2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
+	
+	virtual btHinge2Constraint* getConstraint(int constraint);
 
-	virtual btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
+	virtual void applyForces();
+	virtual void applyForcesToWheel(int wheel);
 
-
-	virtual inline
-	void applyEngine(int wheel)
-	{
-		btHinge2Constraint* hinge = getHinge2(wheel);
-		btRigidBody* bodyA = getChassisBody();
-		btTransform trA = bodyA->getWorldTransform();
-		btVector3 hingeAxisInWorld = trA.getBasis() * hinge->getFrameOffsetA().getBasis().getColumn(2);
-		// btVector3 hingeAxisInWorld = hinge->getAxis2();
-		// printf("axis %f %f %f\n",hingeAxisInWorld[0],hingeAxisInWorld[1],hingeAxisInWorld[2]);
-		hinge->getRigidBodyA().applyTorque(-hingeAxisInWorld * getEngineForce(wheel));
-		hinge->getRigidBodyB().applyTorque(hingeAxisInWorld * getEngineForce(wheel));
-	}
-
-	virtual inline
-	void applySteering(int wheel)
-	{
-		getHinge2(wheel)->setServoTarget(HINGE2_STEERING_IDX, getSteeringValue(wheel));
-	}
-
-	virtual inline
-	btJointFeedback* getJointFeedback(int wheel) { return getHinge2(wheel)->getJointFeedback(); }
-
-	btVector3 getTorque(int wheel) { return  getJointFeedback(wheel)->m_appliedTorqueBodyB ; }
-	btVector3 getForce(int wheel) { return getJointFeedback(wheel)->m_appliedForceBodyB ; }
-
-	virtual inline 
-	btRigidBody* getChassisBody() { return getRigidBody(); }
-	virtual inline 
-	const btRigidBody* getChassisBody() const { return getRigidBody(); }
-
-	virtual inline 
-	btRigidBody* getWheelBody(int wheel) { return &(m_hinges[wheel]->getRigidBodyB()); }
-	virtual inline 
-	const btRigidBody* getWheelBody(int wheel) const { return &(m_hinges[wheel]->getRigidBodyB()); }
-
-	virtual inline 
-	btCollisionShape* getChassisShape() { return getChassisBody()->getCollisionShape(); }
-	virtual inline 
-	const btCollisionShape* getChassisShape() const { return getChassisBody()->getCollisionShape(); }
-
-	virtual inline 
-	btCollisionShape* getWheelShape(int wheel) { return getWheelBody(wheel)->getCollisionShape(); }
-	virtual inline 
-	const btCollisionShape* getWheelShape(int wheel) const { return getWheelBody(wheel)->getCollisionShape(); }
-
-	virtual inline 
-	btScalar getWheelHalfWidth(int wheel) const 
-	{ 
-		auto shape = (btCylinderShape*)getWheelShape(wheel);
-		int idxRadius, idxHeight;
-		switch (shape->getUpAxis())  // get indices of radius and height of cylinder
-		{
-			case 0:  // cylinder is aligned along x
-				idxRadius = 1;
-				idxHeight = 0;
-				break;
-			case 2:  // cylinder is aligned along z
-				idxRadius = 0;
-				idxHeight = 2;
-				break;
-			default:  // cylinder is aligned along y
-				idxRadius = 0;
-				idxHeight = 1;
-		}
-
-		btAssert( getWheelInfo(wheel).m_wheelsWidth == 2*(shape->getHalfExtentsWithMargin()[idxHeight]) );
-
-		return shape->getHalfExtentsWithMargin()[idxHeight]; 
-	}
-	virtual inline 
-	btScalar getWheelRadius(int wheel) const 
-	{ 
-		auto shape = (btCylinderShape*)getWheelShape(wheel);
-		int idxRadius, idxHeight;
-		switch (shape->getUpAxis())  // get indices of radius and height of cylinder
-		{
-			case 0:  // cylinder is aligned along x
-				idxRadius = 1;
-				idxHeight = 0;
-				break;
-			case 2:  // cylinder is aligned along z
-				idxRadius = 0;
-				idxHeight = 2;
-				break;
-			default:  // cylinder is aligned along y
-				idxRadius = 0;
-				idxHeight = 1;
-		}
-
-		btAssert( getWheelInfo(wheel).m_wheelsRadius == shape->getHalfExtentsWithMargin()[idxRadius] );
-
-		return shape->getHalfExtentsWithMargin()[idxRadius]; 
-	}
 };
 
 #endif  //BT_HINGE2VEHICLE_H
