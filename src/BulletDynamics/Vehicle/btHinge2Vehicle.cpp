@@ -32,15 +32,15 @@ btHinge2Vehicle::~btHinge2Vehicle()
 
 }
 
-// void btHinge2Vehicle::updateAction(btCollisionWorld* collisionWorld, btScalar step)
-// {
-// 	(void)collisionWorld;
-// 	updateVehicle(step);
-// }
+void btHinge2Vehicle::updateAction(btCollisionWorld* collisionWorld, btScalar step)
+{
+	// (void)collisionWorld;
+	updateVehicle(step);
+}
 
 void btHinge2Vehicle::updateVehicle(btScalar step)
 {
-	applyForces();
+	applyForces(step);
 }
 
 btHinge2Constraint* btHinge2Vehicle::addWheel(btRigidBody* wheelBody)
@@ -185,15 +185,15 @@ btHinge2Constraint* btHinge2Vehicle::getConstraint(int constraint)
 	return m_constraints[constraint];
 }
 
-void btHinge2Vehicle::applyForces()
+void btHinge2Vehicle::applyForces(btScalar step)
 {
 	for (uint i=0; i<getNumWheels(); i++)
 	{
-		applyForcesToWheel(i);
+		applyForcesToWheel(i, step);
 	}
 }
 
-void btHinge2Vehicle::applyForcesToWheel(int i)
+void btHinge2Vehicle::applyForcesToWheel(int i, btScalar step)
 {
 	btAssert(i < getNumWheels() && i < m_constraints.size());
 
@@ -202,11 +202,6 @@ void btHinge2Vehicle::applyForcesToWheel(int i)
 	getConstraint(i)->setServoTarget(HINGE2_STEERING_IDX, getWheel(i)->getSteeringAngle());
 
 	btVector3 torque = getWheel(i)->getWorldTransform().getBasis().getColumn(getWheel(i)->getWidth()) * getWheel(i)->getTorqueForce(); 
-	getConstraint(i)->getRigidBodyA().applyTorque( -torque );
-	getConstraint(i)->getRigidBodyB().applyTorque( torque );
+	getConstraint(i)->getRigidBodyA().applyTorqueImpulse( -torque );
+	getConstraint(i)->getRigidBodyB().applyTorqueImpulse( torque );
 }
-
-// void btHinge2Vehicle::updateVehicle(btScalar step)
-// {
-	
-// }

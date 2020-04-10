@@ -649,7 +649,7 @@ void Hinge2Vehicle::setTargets()
 	// 	targetForce = -vel_tau*100.f;
 	// else if (m_vehicle->getChassisForwardVelocity() < targetVelocity)
 	// 	targetForce = vel_tau*100.f;
-	m_vehicle->setEnabledTorqueForce(50*vel_tau);
+	m_vehicle->setEnabledTorqueForce(vel_tau);
 
 	btScalar targetSteering;
 	if (steer_left)
@@ -668,7 +668,7 @@ void Hinge2Vehicle::setTargets()
 
 	// printf("Setting force %f steer %f\n", targetForce, targetSteering);
 
-	m_vehicle->applyForces();	
+	// m_vehicle->applyForces();	
 }
 
 void Hinge2Vehicle::specialKeyboardUp(int key, int x, int y)

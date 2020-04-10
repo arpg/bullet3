@@ -43,7 +43,7 @@ public:
 	virtual ~btHinge2Vehicle();
 
 	///btActionInterface interface
-	// virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step);
+	virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step);
 	virtual void updateVehicle(btScalar step);
 	// virtual void debugDraw(btIDebugDraw* debugDrawer) = 0;
 
@@ -53,8 +53,8 @@ public:
 	
 	virtual btHinge2Constraint* getConstraint(int constraint);
 
-	virtual void applyForces();
-	virtual void applyForcesToWheel(int wheel);
+	virtual void applyForces(btScalar);
+	virtual void applyForcesToWheel(int wheel, btScalar);
 
 };
 
