@@ -169,17 +169,17 @@ public:
 	inline virtual void setSteeringEnabled(bool enabled) { m_steeringEnabled = enabled; }
 
 	// If motor not enabled, keep motor force same as previous. This lets us lock forces/steering angles to play with, but these values still default to disabled and 0.
-	inline virtual void setMotorForce(btScalar val) { m_motorForce = std::min(std::max( (isMotorEnabled() ? val : m_motorForce) , getMinMotorForce()), getMaxMotorForce()); printf("Motor set to %f\n",m_motorForce); }
+	inline virtual void setMotorForce(btScalar val) { m_motorForce = std::min(std::max( (isMotorEnabled() ? val : m_motorForce) , getMinMotorForce()), getMaxMotorForce()); }
 	inline virtual void setMinMotorForce(btScalar val) { m_minMotorForce = val; m_motorForce = std::min(std::max( m_motorForce , getMinMotorForce()), getMaxMotorForce()); }
 	inline virtual void setMaxMotorForce(btScalar val) { m_maxMotorForce = val; m_motorForce = std::min(std::max( m_motorForce , getMinMotorForce()), getMaxMotorForce()); }
 
 	inline virtual void setTorqueForce(btScalar val) { setMotorForce(val * getRadius()); }
 
-	inline virtual void setBrakeForce(btScalar val) { m_brakeForce = std::min(std::max( (isBrakeEnabled() ? val : m_brakeForce) , getMinBrakeForce()), getMaxBrakeForce()); printf("Brake set to %f\n",m_brakeForce); }
+	inline virtual void setBrakeForce(btScalar val) { m_brakeForce = std::min(std::max( (isBrakeEnabled() ? val : m_brakeForce) , getMinBrakeForce()), getMaxBrakeForce()); }
 	inline virtual void setMinBrakeForce(btScalar val) { m_minBrakeForce = val; m_brakeForce = std::min(std::max( m_brakeForce , getMinBrakeForce()), getMaxBrakeForce()); }
 	inline virtual void setMaxBrakeForce(btScalar val) { m_maxBrakeForce = val; m_brakeForce = std::min(std::max( m_brakeForce , getMinBrakeForce()), getMaxBrakeForce()); }
 
-	inline virtual void setSteeringAngle(btScalar val) { m_steeringAngle = std::min(std::max( (isSteeringEnabled() ? val : m_steeringAngle), getMinSteeringAngle()), getMaxSteeringAngle()); printf("Steering set to %f\n",m_steeringAngle); }
+	inline virtual void setSteeringAngle(btScalar val) { m_steeringAngle = std::min(std::max( (isSteeringEnabled() ? val : m_steeringAngle), getMinSteeringAngle()), getMaxSteeringAngle()); }
 	inline virtual void setMinSteeringAngle(btScalar val) { m_minSteeringAngle = val; m_steeringAngle = std::min(std::max( m_steeringAngle , getMinSteeringAngle()), getMaxSteeringAngle()); }
 	inline virtual void setMaxSteeringAngle(btScalar val) { m_maxSteeringAngle = val; m_steeringAngle = std::min(std::max( m_steeringAngle , getMinSteeringAngle()), getMaxSteeringAngle()); }
 

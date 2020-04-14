@@ -12,6 +12,7 @@
 
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 class btDynamicsWorld;
+#include "LinearMath/btVector3.h"
 #include "LinearMath/btAlignedObjectArray.h"
 #include "BulletDynamics/Dynamics/btActionInterface.h"
 #include "btWheel.h"

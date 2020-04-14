@@ -1,9 +1,6 @@
 #ifndef BT_WHEELVEHICLE_H
 #define BT_WHEELVEHICLE_H
 
-#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
-#include "btWheelInfo.h"
-
 #include "BulletDynamics/Vehicle/btVehicle.h"
 #include "btWheel.h"
 
