@@ -15,7 +15,7 @@ subject to the following restrictions:
 
 #include "Hinge2Vehicle.h"
 #include <string>
-#include "LinearMath/btBezier.h"
+// #include "LinearMath/btBezier.h"
 
 #include "BulletDynamics/MLCPSolvers/btDantzigSolver.h"
 #include "BulletDynamics/MLCPSolvers/btSolveProjectedGaussSeidel.h"
