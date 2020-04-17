@@ -46,10 +46,6 @@ btHinge2Constraint* btHinge2Vehicle::addWheel(btRigidBody* wheelBody)
 	const btVector3& wheelAxleCS = getRightVector();
 	const btVector3& chassisConnectionCS = wheelBody->getWorldTransform().getOrigin() - getChassisWorldTransform().getOrigin(); // assumes wheel body and chassis body are aligned
 
-	std::cout << "***** " << btWheel::vector2str(getChassisWorldTransform().getOrigin()) << std::endl;
-	std::cout << "***** " << btWheel::vector2str(wheelBody->getWorldTransform().getOrigin()) << std::endl;
-	std::cout << "***** " << btWheel::vector2str(chassisConnectionCS) << std::endl;
-
 	// chassis connection (static parent)
 	btRigidBody* bodyA = getChassisBody();
 	bodyA->setActivationState(DISABLE_DEACTIVATION);
