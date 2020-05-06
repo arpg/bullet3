@@ -44,7 +44,6 @@ public:
 	virtual std::vector<btWheel*>& getEnabledSteeringWheels();
 
 	virtual btScalar getEnabledSteeringAngle();
-
 };
 
 #endif  //BT_WHEELVEHICLE_H

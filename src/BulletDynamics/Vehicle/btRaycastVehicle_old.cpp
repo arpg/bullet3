@@ -10,7 +10,7 @@
 */
 
 #include "LinearMath/btVector3.h"
-#include "btRaycastVehicle.h"
+#include "btRaycastVehicle_old.h"
 
 #include "BulletDynamics/ConstraintSolver/btSolve2LinearConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btJacobianEntry.h"
@@ -484,7 +484,7 @@ void btRaycastVehicle::setBrake(btScalar brake, int wheelIndex)
 {
 	btAssert((wheelIndex >= 0) && (wheelIndex < getNumWheels()));
 	getWheelInfo(wheelIndex).m_brake = brake;
-}
+}btScalar m_deltaRotation;
 
 void btRaycastVehicle::setBrake(btScalar brake, bool isFrontWheelBrake)
 {

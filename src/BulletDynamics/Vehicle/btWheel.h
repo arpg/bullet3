@@ -21,7 +21,10 @@ protected:
 	btScalar m_friction;
 	btScalar m_suspensionStiffness;
 	btScalar m_suspensionDamping;
+	btScalar m_suspensionCompression;
 	btScalar m_maxSuspensionTravel;
+	btScalar m_suspensionRestLength;
+	btScalar m_maxSuspensionForce;
 
 	// control
 	bool m_motorEnabled;
@@ -53,6 +56,9 @@ public:
 		m_suspensionStiffness = 200.f;
 		m_suspensionDamping = 2.3f;
 		m_maxSuspensionTravel = 0.1f;
+		m_suspensionRestLength = 0.05f;
+		m_maxSuspensionForce = 6000.;
+		m_suspensionCompression = 0.83f;
 
 		m_motorEnabled = false;
 		m_brakeEnabled = false;
@@ -98,6 +104,30 @@ public:
 		delete m_collisionObject;
 	}
 
+	struct rayCastInfo
+	{
+		btTransform m_worldTransform;
+		
+		btVector3 m_hardPointWS;
+		btVector3 m_contactPointWS;
+		btVector3 m_contactNormalWS;
+		btVector3 m_wheelDirectionWS;
+		btVector3 m_wheelAxleWS;
+
+		btScalar m_rotation;
+		btScalar m_deltaRotation;
+		btScalar m_suspensionLength;
+		btScalar m_suspensionRelativeVelocity;
+		btScalar m_clippedInvContactDotSuspension;
+		btScalar m_wheelSuspensionForce;
+
+		bool m_isInContact;
+
+		void* m_groundObject;
+	};
+
+	rayCastInfo m_raycastInfo;
+
 	// getters
 	inline virtual btVector3 getChassisConnection() { return m_chassisConnectionCS; }
 
@@ -128,13 +158,18 @@ public:
 	
 	inline virtual const btTransform getWorldTransform() { return getObject()->getWorldTransform(); }
 
+	inline virtual const btVector3 getAxleConnection() { return m_wheelAxleCS; }
+
 	inline virtual btVector3 getWheelVelocity() { return btTransform(btTransform(btQuaternion(0,0,0,1),getBody()->getAngularVelocity())*getWorldTransform()).getOrigin(); }
 	inline virtual btScalar getRadialVelocity() { return getWheelVelocity()[(int)getRadiusAxis()]; }
 
 	inline virtual btScalar getFriction() { return m_friction; }
 	inline virtual btScalar getStiffness() { return m_suspensionStiffness; }
 	inline virtual btScalar getDamping() { return m_suspensionDamping; }
+	inline virtual btScalar getCompression() { return m_suspensionCompression; }
 	inline virtual btScalar getMaxTravel() { return m_maxSuspensionTravel; }
+	inline virtual btScalar getSuspensionRestLength() { return m_suspensionRestLength; }
+	inline virtual btScalar getMaxSuspensionForce() { return m_maxSuspensionForce; }
 
 	inline virtual bool isMotorEnabled() { return m_motorEnabled; }
 	inline virtual bool isBrakeEnabled() { return m_brakeEnabled; }
