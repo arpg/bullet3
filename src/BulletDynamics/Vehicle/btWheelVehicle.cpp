@@ -1,8 +1,8 @@
 #include "btWheelVehicle.h"
 class btWheelVehicle;
 
-btWheelVehicle::btWheelVehicle(btCollisionObject* chassisObject) : 
-	btVehicle(chassisObject)
+btWheelVehicle::btWheelVehicle()
+	: btVehicle()
 {	
 }
 
@@ -50,38 +50,42 @@ btWheel* btWheelVehicle::getWheel(int wheel)
 	return m_wheels[wheel];
 }
 
-void btWheelVehicle::setEnabledMotorForce(btScalar val)
+void btWheelVehicle::setEnabledAngularVelocity(btScalar val)
 {
+	printf("Setting ang vel %f rad/s\n", val);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
 		{
-			getWheel(i)->setMotorForce(val);
+			getWheel(i)->setAngularVelocity(val);
 		}
 	}
 }
-void btWheelVehicle::setEnabledTorqueForce(btScalar val)
+void btWheelVehicle::setEnabledLinearVelocity(btScalar val)
 {
+	printf("Setting lin vel %f m/s\n", val);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
 		{
-			getWheel(i)->setTorqueForce(val);
+			getWheel(i)->setAngularVelocity(val / getWheel(i)->getRadius());
 		}
 	}
 }
-void btWheelVehicle::setEnabledBrakeForce(btScalar val)
+void btWheelVehicle::setEnabledAngularAcceleration(btScalar accel, btScalar dt)
 {
+	printf("Setting ang accel %f over %f sec\n", accel, dt);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
-		if (getWheel(i)->isBrakeEnabled())
+		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
 		{
-			getWheel(i)->setBrakeForce(val);
+			getWheel(i)->setAngularVelocity( accel * dt + getWheel(i)->getAngularVelocity() );
 		}
 	}
 }
 void btWheelVehicle::setEnabledSteeringAngle(btScalar val)
 {
+	printf("Setting steering %f rad\n", val);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isSteeringEnabled())
@@ -120,33 +124,18 @@ void btWheelVehicle::setAllMaxTravel(btScalar val)
 	}
 }
 
-void btWheelVehicle::setAllMinMotorForce(btScalar val)
+void btWheelVehicle::setAllMinAngularVelocity(btScalar val)
 {
 	for(uint i=0; i<getNumWheels(); i++)
 	{
-		getWheel(i)->setMinMotorForce(val);
+		getWheel(i)->setMinAngularVelocity(val);
 	}
 }
-void btWheelVehicle::setAllMaxMotorForce(btScalar val)
+void btWheelVehicle::setAllMaxAngularVelocity(btScalar val)
 {
 	for(uint i=0; i<getNumWheels(); i++)
 	{
-		getWheel(i)->setMaxMotorForce(val);
-	}
-}
-
-void btWheelVehicle::setAllMinBrakeForce(btScalar val)
-{
-	for(uint i=0; i<getNumWheels(); i++)
-	{
-		getWheel(i)->setMinBrakeForce(val);
-	}
-}
-void btWheelVehicle::setAllMaxBrakeForce(btScalar val)
-{
-	for(uint i=0; i<getNumWheels(); i++)
-	{
-		getWheel(i)->setMaxBrakeForce(val);
+		getWheel(i)->setMaxAngularVelocity(val);
 	}
 }
 
@@ -179,20 +168,6 @@ std::vector<btWheel*>& btWheelVehicle::getEnabledMotorWheels()
 	return wheels;
 }
 
-std::vector<btWheel*>& btWheelVehicle::getEnabledBrakeWheels()
-{
-	static std::vector<btWheel*> wheels;
-	wheels.clear();
-	for(uint i=0; i<getNumWheels(); i++)
-	{
-		if (getWheel(i)->isBrakeEnabled())
-		{
-			wheels.push_back(getWheel(i));
-		}
-	}
-	return wheels;
-}
-
 std::vector<btWheel*>& btWheelVehicle::getEnabledSteeringWheels()
 {
 	static std::vector<btWheel*> wheels;
@@ -216,4 +191,5 @@ btScalar btWheelVehicle::getEnabledSteeringAngle()
 			return getWheel(i)->getSteeringAngle();
 		}
 	}
+	return 0.f;
 }

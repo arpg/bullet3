@@ -8,8 +8,8 @@
  * of this software for any purpose.  
  * It is provided "as is" without express or implied warranty.
 */
-#ifndef BT_RAYCASTVEHICLE_H
-#define BT_RAYCASTVEHICLE_H
+#ifndef BT_RAYCASTVEHICLE_OLD_H
+#define BT_RAYCASTVEHICLE_OLD_H
 
 #include <algorithm>
 
@@ -218,4 +218,4 @@ public:
 	virtual void* castRay(const btVector3& from, const btVector3& to, btVehicleRaycasterResult& result);
 };
 
-#endif  //BT_RAYCASTVEHICLE_H
+#endif  //BT_RAYCASTVEHICLE_OLD_H

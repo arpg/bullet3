@@ -31,8 +31,10 @@ protected:
 	int m_userConstraintId;
 
 public:
-	btVehicle(btCollisionObject* chassisObject = new btCollisionObject());
+	btVehicle();
 	virtual ~btVehicle();
+
+	static btRigidBody* createLocalRigidBody(float mass, const btTransform& startTransform, btCollisionShape* shape, const btVector4& color = btVector4(1, 0, 0, 1));
 
 	///btActionInterface interface
 	virtual void updateAction(btCollisionWorld* collisionWorld, btScalar step);
@@ -44,9 +46,12 @@ public:
 
 	virtual btTransform& getChassisWorldTransform();
 
-	virtual btCollisionObject* getChassisObject() ;
-	virtual btRigidBody* getRigidBody() ;
-	virtual btRigidBody* getChassisBody() ;
+	virtual btCollisionObject* getChassisObject();
+	virtual btRigidBody* getRigidBody();
+	virtual btRigidBody* getChassisBody();
+
+	virtual void setChassisObject(btCollisionObject* object) { m_chassisObject = object; }
+	virtual void setChassisBody(btRigidBody* body) { m_chassisObject = body; }
 
 	inline int getRightAxis()  { return m_indexRightAxis; }
 	inline int getUpAxis()  { return m_indexUpAxis; }

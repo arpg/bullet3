@@ -79,8 +79,9 @@ public:
 	virtual void renderScene();
 
 	void spawnEnvironment();
-	void spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisMass, btScalar wheelRadius, btScalar wheelWidth, btScalar wheelMass, btScalar suspensionStiffness, btScalar suspensionDamping);
+	void spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisMass, btScalar wheelRadius, btScalar wheelHalfWidth, btScalar wheelMass, btScalar suspensionStiffness, btScalar suspensionDamping);
 	void spawnCar();
+	void spawnCarPlannerCar();
 	void spawnBuggie();
 
 	void initPhysics();
@@ -92,9 +93,9 @@ public:
 
 static bool useMCLPSolver = false;
 
-static int rightIndex = 0;
-static int upIndex = 1;
-static int forwardIndex = 2;
+static int rightIndex = 1;
+static int upIndex = 2;
+static int forwardIndex = 0;
 
 // static float throttle_tau;
 static bool throttle_up = false;
@@ -129,6 +130,7 @@ static void preTickCallback(btDynamicsWorld* world, btScalar timeStep)
 		prtmsg += info->m_vehicle->wheel2str(i,"","","\t","");
 	}
 	std::cout << prtmsg;
+	std::cout << "Speed " << std::to_string(info->m_vehicle->getCurrentSpeedMS()) << " m/s" << std::endl;
 }	
 
 void Hinge2Vehicle::initPhysics()
@@ -159,7 +161,7 @@ void Hinge2Vehicle::initPhysics()
 	{
 		m_dynamicsWorld->getSolverInfo().m_minimumSolverBatchSize = 128;  //for direct solver, it is better to solve multiple objects together, small batches have high overhead
 	}
-	m_dynamicsWorld->setGravity(btVector3(0,-9.8,0));
+	m_dynamicsWorld->setGravity(btVector3(0,0,-9.8));
 	m_dynamicsWorld->getSolverInfo().m_numIterations = 100;
 	m_dynamicsWorld->setInternalTickCallback(preTickCallback, this, true);
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
@@ -167,7 +169,8 @@ void Hinge2Vehicle::initPhysics()
 	spawnEnvironment();
 
 	// spawnCar();
-	spawnBuggie();
+	spawnCarPlannerCar();
+	// spawnBuggie();
 
 	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
 }
@@ -182,48 +185,48 @@ void Hinge2Vehicle::spawnEnvironment()
 	btCompoundShape* groundCompound = new btCompoundShape();
 	m_collisionShapes.push_back(groundCompound);
 	{
-		btCollisionShape* groundShape = new btBoxShape(btVector3(50, 3, 50));
+		btCollisionShape* groundShape = new btBoxShape(btVector3(50, 50, .5));
 		m_collisionShapes.push_back(groundShape);
 		
 		btTransform localTrans;
 		localTrans.setIdentity();
-		localTrans.setOrigin(btVector3(0, -3, 0));
+		localTrans.setOrigin(btVector3(0, 0, -.5));
 
 		groundCompound->addChildShape(localTrans, groundShape);
 	}
 	// add box obstacles
 	{
-		btCollisionShape* shape = new btBoxShape(btVector3(5, 1, 1));
+		btCollisionShape* shape = new btBoxShape(btVector3(.5, 5, .5));
 		m_collisionShapes.push_back(shape);
 		
 		btTransform tr;
 		tr.setIdentity();
-		tr.setOrigin(btVector3(-5.0-0.5, 0, 0+1));
+		tr.setOrigin(btVector3(0.5, -6, 0.5));
 		groundCompound->addChildShape(tr, shape);
 	}
 	// add ramp
 	{
-		btVector3 p_bbl(5.0, 	0, 		0); // -y z x
-		btVector3 p_bbr(-5.0, 	0, 		0);
-		btVector3 p_bfr(-5.0, 	0, 		4.0);
-		btVector3 p_bfl(5.0, 	0, 		4.0);
-		btVector3 p_tfl(5.0, 	2.0, 	4.0);
-		btVector3 p_tfr(-5.0, 	2.0, 	4.0);
+		btVector3 p_bbl(0,		-5.0, 	0); 
+		btVector3 p_bbr(0,		5.0, 	0);
+		btVector3 p_bfr(4.0,	5.0, 	0);
+		btVector3 p_bfl(4.0,	-5.0, 	0);
+		btVector3 p_tfl(4.0,	-5.0, 	2.0);
+		btVector3 p_tfr(4.0,	5.0, 	2.0);
     	btTriangleMesh *mesh = new btTriangleMesh();
 		mesh->addTriangle(p_bbl, p_bbr, p_bfr);
 		mesh->addTriangle(p_bbl, p_bfr, p_bfl);
-		mesh->addTriangle(p_bbl, p_bbr, p_tfr);
-		mesh->addTriangle(p_bbl, p_tfr, p_tfl);
-		mesh->addTriangle(p_bbl, p_tfl, p_bfl);
-		mesh->addTriangle(p_bbr, p_bfr, p_tfr);
-		mesh->addTriangle(p_bfl, p_tfr, p_bfr);
-		mesh->addTriangle(p_bfl, p_tfl, p_tfr);
+		mesh->addTriangle(p_bbl, p_tfr, p_bbr);
+		mesh->addTriangle(p_bbl, p_tfl, p_tfr);
+		mesh->addTriangle(p_bbl, p_bfl, p_tfl);
+		mesh->addTriangle(p_bbr, p_tfr, p_bfr);
+		mesh->addTriangle(p_bfl, p_bfr, p_tfr);
+		mesh->addTriangle(p_bfl, p_tfr, p_tfl);
     	btCollisionShape* shape = new btBvhTriangleMeshShape(mesh,true,true);
 		m_collisionShapes.push_back(shape);
 
 		btTransform tr;
 		tr.setIdentity();
-		tr.setOrigin(btVector3(5.0+0.5, 0, 0));
+		tr.setOrigin(btVector3(0, 6, 0));
 		groundCompound->addChildShape(tr, shape);
 	}
 	btTransform tr;
@@ -234,12 +237,12 @@ void Hinge2Vehicle::spawnEnvironment()
 }
 
 
-void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisMass, btScalar wheelRadius, btScalar wheelWidth, btScalar wheelMass, btScalar suspensionStiffness, btScalar suspensionDamping)
+void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisMass, btScalar wheelRadius, btScalar wheelHalfWidth, btScalar wheelMass, btScalar suspensionStiffness, btScalar suspensionDamping)
 {
 	static std::string prtmsg = "Spawning vehicle:\n";
 	static float chassisHalfWidth = chassisHalfExtents[0];
 	static float chassisHalfHeight = chassisHalfExtents[1];
-	static float chassisHalfLength = chassisHalfExtents[2];
+	static float chassisHalfLength = chassisHalfExtents[2]-.2;
 
 	prtmsg += "\tchassisMass: "+std::to_string(chassisMass)+"\n";
 	prtmsg += "\tchassisHalfWidth: "+std::to_string(chassisHalfWidth)+"\n";
@@ -247,14 +250,14 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 	prtmsg += "\tchassisHalfLength: "+std::to_string(chassisHalfLength)+"\n";
 
 	// add chassis
-	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength)); // width (z), height (-y), length (x)
-	m_collisionShapes.push_back(chassisShape);
+	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfLength, chassisHalfWidth, chassisHalfHeight)); // width (z), height (-y), length (x)
+	// m_collisionShapes.push_back(chassisShape);
 
 	// btCompoundShape* chassisShape = new btCompoundShape();
 	// m_collisionShapes.push_back(chassisShape);
 	// btTransform localTrans;
 	// localTrans.setIdentity();
-	btVector3 cog(0,0,-0.);
+	btVector3 cog(0,0,0.);
 	// //localTrans effectively shifts the center of mass with respect to the chassis
 	// localTrans.setOrigin(btVector3(0, 0, 0)-cog);
 	// chassisShape->addChildShape(localTrans, chassisShape);
@@ -264,63 +267,112 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 	btScalar FALLHEIGHT = 5;
 	btTransform chassisTran;
 	chassisTran.setIdentity();
-	btVector3 pos(0, FALLHEIGHT, -3);
+	btVector3 pos(-3, 0, FALLHEIGHT);
 	chassisTran.setOrigin(pos);
 
 	// btScalar chassisMass = 80.0f;
-	btRigidBody* chassisBody = createRigidBody(chassisMass, chassisTran, chassisShape);  //chassisShape);
+	btRigidBody* chassisBody = btVehicle::createLocalRigidBody(wheelMass, chassisTran, chassisShape);
+	m_dynamicsWorld->addRigidBody(chassisBody);
 
-	m_vehicle = new btHinge2Vehicle(chassisBody);
+	m_vehicle = new btHinge2Vehicle();
+	m_vehicle->setChassisBody(chassisBody);
 	m_dynamicsWorld->addVehicle(m_vehicle);
-	// m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
+	m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
 
 	pos = m_vehicle->getChassisWorldTransform().getOrigin();
 	prtmsg += "\tchassisPos: "+std::to_string(pos[0])+" "+std::to_string(pos[1])+" "+std::to_string(pos[2])+"\n";
 
 	// add wheels
-	btVector3 wheelPosCS[4];
-	wheelPosCS[0] = btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(-chassisHalfHeight),	 btScalar(chassisHalfLength-wheelRadius)	)-cog; // front right
-	wheelPosCS[1] = btVector3(	 btScalar(chassisHalfWidth + wheelWidth),	btScalar(-chassisHalfHeight),	 btScalar(chassisHalfLength-wheelRadius)	)-cog; // front left
-	wheelPosCS[2] = btVector3(	 btScalar(chassisHalfWidth + wheelWidth),	btScalar(-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog; // back left
-	wheelPosCS[3] = btVector3(	-btScalar(chassisHalfWidth + wheelWidth),	btScalar(-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius)	)-cog; // back right
+	// btVector3 wheelPosCS[4];
+	// wheelPosCS[0] = btVector3(	-btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight),	 btScalar(chassisHalfLength-wheelRadius+.2)	)-cog; // front right
+	// wheelPosCS[1] = btVector3(	 btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight),	 btScalar(chassisHalfLength-wheelRadius+.2)	)-cog; // front left
+	// wheelPosCS[2] = btVector3(	 btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius+.2)	)-cog; // back left
+	// wheelPosCS[3] = btVector3(	-btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight),	-btScalar(chassisHalfLength-wheelRadius+.2)	)-cog; // back right
 
-	btCollisionShape* wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
-	m_collisionShapes.push_back(wheelShape);
+	btCollisionShape* wheelShape = new btCylinderShape(btVector3(wheelRadius, wheelHalfWidth, wheelRadius));
+	// m_collisionShapes.push_back(wheelShape);
 
 	btVector4 wheelColor(1,0,0,1);
 
-	for (int i = 0; i < 4; i++)
+	btScalar maxSteer = 30.f*B3_RADS_PER_DEG;
+	btScalar maxLinVel = 10.f;
+	btScalar maxAngVel = maxLinVel/(wheelRadius);
+	btScalar maxTravel = 0.1f;
+	btScalar friction = 1.f;
+	btScalar stallTorque = 20.f;
+
+	// front right
 	{
-		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS[i]);
-		btRigidBody* wheelBody = createRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
-
-		prtmsg += "Adding wheel "+std::to_string(i)+":\n";
-
-		btTypedConstraint* constraint = m_vehicle->addWheel(wheelBody);
+		btVector3 wheelPosCS = btVector3(	btScalar(chassisHalfLength-wheelRadius+.2),		-btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	)-cog;
+		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
+		m_dynamicsWorld->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, maxSteer, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, friction, stallTorque);
 		m_dynamicsWorld->addConstraint(constraint, true);
-
-		m_vehicle->getWheel(m_vehicle->getNumWheels()-1)->setDamping(suspensionDamping);
-		m_vehicle->getWheel(m_vehicle->getNumWheels()-1)->setStiffness(suspensionStiffness);
-
-		if (i<2) // front wheels
-		{
-			m_vehicle->getWheel(i)->setSteeringEnabled(true);
-		}
-		// else
-		// {
-			m_vehicle->getWheel(i)->setMotorEnabled(true);
-			m_vehicle->getWheel(i)->setBrakeEnabled(true);
-		// }
-		
-		prtmsg += m_vehicle->wheel2str(i,"","","\t","");
 	}
-	std::cout << prtmsg;
+	// front left
+	{
+		btVector3 wheelPosCS = btVector3(	btScalar(chassisHalfLength-wheelRadius+.2),		btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	)-cog; 
+		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
+		m_dynamicsWorld->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, maxSteer, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, friction, stallTorque);
+		m_dynamicsWorld->addConstraint(constraint, true);
+	}
+	// back left
+	{
+		btVector3 wheelPosCS = btVector3(	-btScalar(chassisHalfLength-wheelRadius+.2),		btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	)-cog; 
+		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
+		m_dynamicsWorld->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, 0.f, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, friction, stallTorque);
+		m_dynamicsWorld->addConstraint(constraint, true);
+	}
+	// back right
+	{
+		btVector3 wheelPosCS = btVector3(	-btScalar(chassisHalfLength-wheelRadius+.2),		-btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	)-cog; 
+		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
+		m_dynamicsWorld->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, 0.f, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, friction, stallTorque);
+		m_dynamicsWorld->addConstraint(constraint, true);
+	}
+	m_vehicle->updateConstraints();
+
+	// for (int i = 0; i < 4; i++)
+	// {
+	// 	btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS[i]);
+	// 	btRigidBody* wheelBody = createRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
+
+	// 	prtmsg += "Adding wheel "+std::to_string(i)+":\n";
+
+	// 	btTypedConstraint* constraint = m_vehicle->addWheel(wheelBody);
+	// 	// btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, maxSteer, maxTorque, maxBrake, suspensionStiffness, suspensionDamping, maxTravel, friction, maxLinVelocity);
+	// 	m_dynamicsWorld->addConstraint(constraint, true);
+
+	// 	// m_vehicle->getWheel(i)->setDamping(0.f);
+	// 	// m_vehicle->getWheel(i)->setStiffness(0.f);
+
+	// 	// if (i<2) // front wheels
+	// 	// {
+	// 	// 	m_vehicle->getWheel(i)->setSteeringEnabled(true);
+	// 	// }
+	// 	// else
+	// 	// {
+	// 		// m_vehicle->getWheel(i)->setMotorEnabled(true);
+	// 		// m_vehicle->getWheel(i)->setBrakeEnabled(true);
+	// 	// }
+		
+	// 	prtmsg += m_vehicle->wheel2str(i,"","","\t","");
+	// }
+	// std::cout << prtmsg;
 }
+
 
 void Hinge2Vehicle::spawnCar()
 {
 	static float wheelRadius = 0.075f;
-	static float wheelWidth = 0.05f;
+	static float wheelHalfWidth = 0.05f;
 	static float wheelMass = 1.0f;
 
 	static float suspensionStiffness = 700.f;
@@ -331,13 +383,72 @@ void Hinge2Vehicle::spawnCar()
 	static float chassisHalfLength = 0.4;
 	static float chassisMass = 10.f;
 
-	spawnVehicle(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength), chassisMass, wheelRadius, wheelWidth, wheelMass, suspensionStiffness, suspensionDamping);
+	spawnVehicle(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength), chassisMass, wheelRadius, wheelHalfWidth, wheelMass, suspensionStiffness, suspensionDamping);
+}
+
+void Hinge2Vehicle::spawnCarPlannerCar()
+{
+	// static float wheelRadius = 0.04f;
+	// static float wheelHalfWidth = 0.025f;
+	// static float wheelMass = 0.01f;
+
+	// static float suspensionStiffness = 120.f;
+	// static float suspensionDamping = 10.f;
+
+	// static float chassisHalfWidth = 0.21;
+	// static float chassisHalfHeight = 0.03;
+	// static float chassisHalfLength = 0.27+wheelRadius;
+	// static float chassisMass = 0.473f;
+
+	static float wheelRadius = 0.2f;
+	static float wheelHalfWidth = 0.1f;
+	static float wheelMass = 1.0f;
+
+	static float suspensionStiffness = 200.f;
+	static float suspensionDamping = 2.3f;
+
+	static float chassisHalfWidth = 0.21;
+	static float chassisHalfHeight = 0.03;
+	static float chassisHalfLength = 0.37+wheelRadius;
+	static float chassisMass = 20.473f;
+
+	static float maxSteer = 30*B3_RADS_PER_DEG;
+	static float maxLinVel = 5.;
+	static float maxAngVel = maxLinVel/wheelRadius;
+	static float maxTravel = 0.1f;
+	static float wheelFriction = 1.f;
+	static float stallTorque = 20.f;
+	
+	btVector3 initialPos(-3,0,5);
+	btQuaternion initialRot(0,0,0,1);
+	btTransform initialPose(initialRot,initialPos);
+
+	// spawnVehicle(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength), chassisMass, wheelRadius, wheelHalfWidth, wheelMass, suspensionStiffness, suspensionDamping);
+	m_vehicle = new btDefaultHinge2Vehicle(chassisHalfWidth,
+									 chassisHalfHeight,
+									 chassisHalfLength,
+									 chassisMass,
+									 wheelRadius,
+									 wheelHalfWidth,
+									 wheelMass,
+									 suspensionStiffness,
+									 suspensionDamping,
+									 maxSteer,
+									 maxAngVel,
+									 maxTravel,
+									 wheelFriction,
+									 stallTorque);
+	m_vehicle->setCoordinateSystem(rightIndex, upIndex, forwardIndex);
+	dynamic_cast<btDefaultHinge2Vehicle*>(m_vehicle)->spawn(m_dynamicsWorld, initialPose);
+	// m_collisionShapes.push_back(m_vehicle->getChassisBody()->getCollisionShape());
+	// m_collisionShapes.push_back(m_vehicle->getWheel(0)->getShape());
+	// m_dynamicsWorld->addVehicle(m_vehicle);
 }
 
 void Hinge2Vehicle::spawnBuggie()
 {
-	static float wheelRadius = 0.4f;
-	static float wheelWidth = 0.2f;
+	static float wheelRadius = 0.2f;
+	static float wheelHalfWidth = 0.2f;
 	static float wheelMass = 5.0f;
 	
 	static float suspensionStiffness = 700.f;
@@ -348,7 +459,7 @@ void Hinge2Vehicle::spawnBuggie()
 	static float chassisHalfLength = 1.;
 	static float chassisMass = 80.f;
 
-	spawnVehicle(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength), chassisMass, wheelRadius, wheelWidth, wheelMass, suspensionStiffness, suspensionDamping);
+	spawnVehicle(btVector3(chassisHalfWidth, chassisHalfHeight, chassisHalfLength), chassisMass, wheelRadius, wheelHalfWidth, wheelMass, suspensionStiffness, suspensionDamping);
 }
 
 //to be implemented by the demo
@@ -367,12 +478,13 @@ void Hinge2Vehicle::renderScene()
 
 void Hinge2Vehicle::resetCamera()
 {
-	float dist = 8;
+	float dist = 6;
 	float pitch = -32;
-	float yaw = -45;
-	float targetPos[3] = {0,0,2};
+	float yaw = -90;
+	float des_yaw = 0;
+	float targetPos[3] = {2,0,0};
 
-	btTransform target = m_vehicle->getConstraint(0)->getRigidBodyA().getWorldTransform();
+	btTransform target = m_vehicle->getChassisBody()->getWorldTransform();
 	// target = target*btTransform(btQuaternion(0,0,1,0),btVector3());
 	// target = target*btTransform(btQuaternion(target.getBasis().getColumn(0),-32*B3_RADS_PER_DEG),btVector3());
 	targetPos[0] = target.getOrigin()[0];
@@ -380,11 +492,15 @@ void Hinge2Vehicle::resetCamera()
 	targetPos[2] = target.getOrigin()[2];
 	btScalar qy,qp,qr;
 	target.getRotation().getEulerZYX(qy,qp,qr);
-	yaw = qp*B3_DEGS_PER_RAD;
-	if (target.getRotation().getY()>0.7)
-		yaw = 180-yaw;
-	if (target.getRotation().getY()<-0.7)
-		yaw = -180-yaw;
+	yaw += qy*B3_DEGS_PER_RAD;
+
+	printf("x %f y %f z %f r %f p %f y %f\n", targetPos[0], targetPos[1], targetPos[2], qr, qp, qy);
+
+	// if (yaw > 90)
+	// 	yaw = 180-yaw;
+	// if (yaw < -90)
+	// 	yaw = -180-yaw;
+	yaw += des_yaw;
 	// printf("yaw %f\n",yaw);
 	m_guiHelper->resetCamera(dist, yaw, pitch, targetPos[0], targetPos[1], targetPos[2]);
 }
@@ -600,15 +716,18 @@ bool Hinge2Vehicle::keyboardCallback(int key, int state)
 void Hinge2Vehicle::setTargets()
 {
 	static btScalar vel_tau;
+	float vel_max = 6.f;
+	float vel_diff = 0.05f;
+
 	if (throttle_up)
 	{
-		vel_tau += 0.05;
-		vel_tau = std::min((float)vel_tau, 1.f);
+		vel_tau += vel_diff*vel_max;
+		vel_tau = std::min((float)vel_tau, vel_max);
 	}
 	else if (throttle_down)
 	{
-		vel_tau -= 0.05;
-		vel_tau = std::max((float)vel_tau, -1.f);
+		vel_tau += -vel_diff*vel_max;
+		vel_tau = std::max((float)vel_tau, -vel_max);
 	}
 	else //if (!throttle_down && !throttle_up)
 	{
@@ -638,7 +757,7 @@ void Hinge2Vehicle::setTargets()
 				
 	// 		}
 			
-	// 		m_vehicle->getWheel(i)->setTorqueForce(targetForce);
+	// 		m_vehicle->getWheel(i)->setMotorTorque(targetForce);
 	// 	}
 	// }
 	
@@ -649,7 +768,8 @@ void Hinge2Vehicle::setTargets()
 	// 	targetForce = -vel_tau*100.f;
 	// else if (m_vehicle->getChassisForwardVelocity() < targetVelocity)
 	// 	targetForce = vel_tau*100.f;
-	m_vehicle->setEnabledTorqueForce(vel_tau);
+
+	m_vehicle->setEnabledLinearVelocity(vel_tau);
 
 	btScalar targetSteering;
 	if (steer_left)

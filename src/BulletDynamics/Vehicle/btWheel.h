@@ -2,6 +2,7 @@
 #define BT_WHEEL_H
 
 #include <string>
+#include <iostream>
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btTransform.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -23,24 +24,17 @@ protected:
 	btScalar m_suspensionDamping;
 	btScalar m_maxSuspensionTravel;
 
-	// control
-	bool m_motorEnabled;
-	bool m_brakeEnabled;
-	bool m_steeringEnabled;
+	btScalar m_angularVelocity; // positive speeds forward
+	btScalar m_maxAngularVelocity;
+	btScalar m_minAngularVelocity;
 
-	btScalar m_motorForce; // positive speeds forward
-	btScalar m_maxMotorForce;
-	btScalar m_minMotorForce;
-
-	btScalar m_brakeForce; // positive slows downs
-	btScalar m_maxBrakeForce;
-	btScalar m_minBrakeForce;
-
-	btScalar m_steeringAngle; // positive is to the right
+	btScalar m_steeringAngle; // positive is to the left
 	btScalar m_minSteeringAngle;
 	btScalar m_maxSteeringAngle;
+	
+	btScalar m_stallTorque;
 
-	btScalar m_maxVelocity; // angular velocity limit along radial axis
+	btScalar m_maxSteeringRate;
 
 public:
 	btWheel(const btVector3& chassisConnectionCS, const btVector3& wheelDirectionCS, const btVector3& wheelAxleCS, btCollisionObject* object) :
@@ -50,40 +44,35 @@ public:
 		m_collisionObject(object) 
 	{
 		m_friction = 1.0f;
+
 		m_suspensionStiffness = 200.f;
 		m_suspensionDamping = 2.3f;
 		m_maxSuspensionTravel = 0.1f;
 
-		m_motorEnabled = false;
-		m_brakeEnabled = false;
-		m_steeringEnabled = false;
-
-		m_motorForce = 0.f;
-		m_maxMotorForce = 200.f;
-		m_minMotorForce = -200.f;
-
-		m_brakeForce = 0.f;
-		m_maxBrakeForce = 100.f;
-		m_minBrakeForce = 0.f;
+		m_angularVelocity = 0.f;
+		m_maxAngularVelocity = 0.f;
+		m_minAngularVelocity = -0.f;
 
 		m_steeringAngle = 0.f;
-		m_minSteeringAngle = -0.5f;
-		m_maxSteeringAngle = 0.5f;
+		m_minSteeringAngle = -0.f;
+		m_maxSteeringAngle = 0.f;
 
-		m_maxVelocity = 5*2*M_PI;
+		m_stallTorque = INFINITY;
+
+		m_maxSteeringRate = FLT_MAX;
 	}	
 
-	btWheel(const btVector3& chassisConnectionCS, const btVector3& wheelDirectionCS, const btVector3& wheelAxleCS, btScalar width, btScalar radius)
+	btWheel(const btVector3& chassisConnectionCS, const btVector3& wheelDirectionCS, const btVector3& wheelAxleCS, btScalar halfWidth, btScalar radius)
 	{
 		btCollisionObject* object = new btCollisionObject();
 		btCylinderShape* shape;
 		switch ((int)getWidthAxis())
 		{
 			case 0:
-				shape = new btCylinderShapeX(btVector3(width, radius, radius));
+				shape = new btCylinderShapeX(btVector3(halfWidth, radius, radius));
 				break;
 			case 2:
-				shape = new btCylinderShapeZ(btVector3(radius, radius, width));
+				shape = new btCylinderShapeZ(btVector3(radius, radius, halfWidth));
 				break;
 			default:
 				printf("ERROR\n");
@@ -123,7 +112,7 @@ public:
 	inline virtual btScalar getWidthAxis() { return ((const btCylinderShape*)getShape())->getUpAxis(); }
 	inline virtual btScalar getRadiusAxis() { return ((int)getWidthAxis() + 1)%3; }
 
-	inline virtual btScalar getWidth() { return ((const btCylinderShape*)getShape())->getHalfExtentsWithoutMargin()[(int)getWidthAxis()]; }
+	inline virtual btScalar getWidth() { return 2*((const btCylinderShape*)getShape())->getHalfExtentsWithoutMargin()[(int)getWidthAxis()]; }
 	inline virtual btScalar getRadius() { return ((const btCylinderShape*)getShape())->getHalfExtentsWithoutMargin()[(int)getRadiusAxis()]; }
 	
 	inline virtual const btTransform getWorldTransform() { return getObject()->getWorldTransform(); }
@@ -136,25 +125,22 @@ public:
 	inline virtual btScalar getDamping() { return m_suspensionDamping; }
 	inline virtual btScalar getMaxTravel() { return m_maxSuspensionTravel; }
 
-	inline virtual bool isMotorEnabled() { return m_motorEnabled; }
-	inline virtual bool isBrakeEnabled() { return m_brakeEnabled; }
-	inline virtual bool isSteeringEnabled() { return m_steeringEnabled; }
+	inline virtual bool isMotorEnabled() { return getStallTorque()!=0; }
+	inline virtual bool isSteeringEnabled() { return getMaxSteeringAngle()!=0 || getMinSteeringAngle()!=0; }
 
-	inline virtual btScalar getMotorForce() { return m_motorForce; }
-	inline virtual btScalar getMinMotorForce() { return m_minMotorForce; }
-	inline virtual btScalar getMaxMotorForce() { return m_maxMotorForce; }
+	inline virtual btScalar getAngularVelocity() { return m_angularVelocity; }
+	inline virtual btScalar getMinAngularVelocity() { return m_minAngularVelocity; }
+	inline virtual btScalar getMaxAngularVelocity() { return m_maxAngularVelocity; }
 
-	inline virtual btScalar getTorqueForce() { return getMotorForce() / getRadius(); }
-
-	inline virtual btScalar getBrakeForce() { return m_brakeForce; }
-	inline virtual btScalar getMinBrakeForce() { return m_minBrakeForce; }
-	inline virtual btScalar getMaxBrakeForce() { return m_maxBrakeForce; }
+	inline virtual btScalar getLinearVelocity() { return getAngularVelocity() * (getRadius() ); }
 
 	inline virtual btScalar getSteeringAngle() { return m_steeringAngle; }
 	inline virtual btScalar getMinSteeringAngle() { return m_minSteeringAngle; }
 	inline virtual btScalar getMaxSteeringAngle() { return m_maxSteeringAngle; }
 
-	inline virtual btScalar getMaxVelocity() { return m_maxVelocity; }
+	inline virtual btScalar getStallTorque() { return m_stallTorque; }
+
+	inline virtual btScalar getMaxSteeringRate() { return m_maxSteeringRate; }
 
 	// setters
 	// inline virtual void setShape(btCollisionShape* shape) { m_shape = shape; }
@@ -164,26 +150,18 @@ public:
 	inline virtual void setDamping(btScalar val) { m_suspensionDamping = val; }
 	inline virtual void setMaxTravel(btScalar val) { m_maxSuspensionTravel = val; }
 
-	inline virtual void setMotorEnabled(bool enabled) { m_motorEnabled = enabled; }
-	inline virtual void setBrakeEnabled(bool enabled) { m_brakeEnabled = enabled; }
-	inline virtual void setSteeringEnabled(bool enabled) { m_steeringEnabled = enabled; }
-
 	// If motor not enabled, keep motor force same as previous. This lets us lock forces/steering angles to play with, but these values still default to disabled and 0.
-	inline virtual void setMotorForce(btScalar val) { m_motorForce = std::min(std::max( (isMotorEnabled() ? val : m_motorForce) , getMinMotorForce()), getMaxMotorForce()); }
-	inline virtual void setMinMotorForce(btScalar val) { m_minMotorForce = val; m_motorForce = std::min(std::max( m_motorForce , getMinMotorForce()), getMaxMotorForce()); }
-	inline virtual void setMaxMotorForce(btScalar val) { m_maxMotorForce = val; m_motorForce = std::min(std::max( m_motorForce , getMinMotorForce()), getMaxMotorForce()); }
-
-	inline virtual void setTorqueForce(btScalar val) { setMotorForce(val * getRadius()); }
-
-	inline virtual void setBrakeForce(btScalar val) { m_brakeForce = std::min(std::max( (isBrakeEnabled() ? val : m_brakeForce) , getMinBrakeForce()), getMaxBrakeForce()); }
-	inline virtual void setMinBrakeForce(btScalar val) { m_minBrakeForce = val; m_brakeForce = std::min(std::max( m_brakeForce , getMinBrakeForce()), getMaxBrakeForce()); }
-	inline virtual void setMaxBrakeForce(btScalar val) { m_maxBrakeForce = val; m_brakeForce = std::min(std::max( m_brakeForce , getMinBrakeForce()), getMaxBrakeForce()); }
+	inline virtual void setAngularVelocity(btScalar val) { m_angularVelocity = std::min(std::max( (isMotorEnabled() ? val : m_angularVelocity) , getMinAngularVelocity()), getMaxAngularVelocity()); }
+	inline virtual void setMinAngularVelocity(btScalar val) { m_minAngularVelocity = val; m_angularVelocity = std::min(std::max( m_angularVelocity , getMinAngularVelocity()), getMaxAngularVelocity()); }
+	inline virtual void setMaxAngularVelocity(btScalar val) { m_maxAngularVelocity = val; m_angularVelocity = std::min(std::max( m_angularVelocity , getMinAngularVelocity()), getMaxAngularVelocity()); }
 
 	inline virtual void setSteeringAngle(btScalar val) { m_steeringAngle = std::min(std::max( (isSteeringEnabled() ? val : m_steeringAngle), getMinSteeringAngle()), getMaxSteeringAngle()); }
 	inline virtual void setMinSteeringAngle(btScalar val) { m_minSteeringAngle = val; m_steeringAngle = std::min(std::max( m_steeringAngle , getMinSteeringAngle()), getMaxSteeringAngle()); }
 	inline virtual void setMaxSteeringAngle(btScalar val) { m_maxSteeringAngle = val; m_steeringAngle = std::min(std::max( m_steeringAngle , getMinSteeringAngle()), getMaxSteeringAngle()); }
 
-	inline virtual void setMaxVelocity(btScalar val) { m_maxVelocity = val; }
+	inline virtual void setStallTorque(btScalar val) { m_stallTorque = val; }
+
+	inline virtual void setMaxSteeringRate(btScalar val) { m_maxSteeringRate = val; }
 
 	// btVector3 fric = static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->getRigidBodyB().getWorldTransform().getBasis().getColumn(2) * 1.0
 	// 	+ static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->getRigidBodyB().getWorldTransform().getBasis().getColumn(0) * 1.0;
@@ -205,17 +183,15 @@ public:
 		msg += line_prefix + 	"suspensionDamping " + 		std::to_string(getDamping())			+ line_suffix +"\n";
 		msg += line_prefix + 	"suspensionMaxTravel " + 	std::to_string(getMaxTravel())			+ line_suffix +"\n";
 		msg += line_prefix + 	"motorEnabled " + 			std::to_string(isMotorEnabled())		+ line_suffix +"\n";
-		msg += line_prefix + 	"brakeEnabled " + 			std::to_string(isBrakeEnabled())		+ line_suffix +"\n";
 		msg += line_prefix + 	"steeringEnabled " + 		std::to_string(isSteeringEnabled())		+ line_suffix +"\n";
-		msg += line_prefix + 	"motorForce " + 			std::to_string(getMotorForce())			+ line_suffix +"\n";
-		msg += line_prefix + 	"maxMotorForce " + 			std::to_string(getMaxMotorForce())		+ line_suffix +"\n";
-		msg += line_prefix + 	"minMotorForce " + 			std::to_string(getMinMotorForce())		+ line_suffix +"\n";
-		msg += line_prefix + 	"brakeForce " + 			std::to_string(getBrakeForce())			+ line_suffix +"\n";
-		msg += line_prefix + 	"maxBrakeForce " + 			std::to_string(getMaxBrakeForce())		+ line_suffix +"\n";
-		msg += line_prefix + 	"minBrakeForce " + 			std::to_string(getMinBrakeForce())		+ line_suffix +"\n";
+		msg += line_prefix + 	"angularVelocity " + 		std::to_string(getAngularVelocity())	+ line_suffix +"\n";
+		msg += line_prefix + 	"maxAngularVelocity " + 	std::to_string(getMaxAngularVelocity())	+ line_suffix +"\n";
+		msg += line_prefix + 	"minAngularVelocity " + 	std::to_string(getMinAngularVelocity())	+ line_suffix +"\n";
 		msg += line_prefix + 	"steeringAngle " + 			std::to_string(getSteeringAngle())		+ line_suffix +"\n";
 		msg += line_prefix + 	"maxSteeringAngle " + 		std::to_string(getMaxSteeringAngle())	+ line_suffix +"\n";
 		msg += line_prefix + 	"minSteeringAngle " + 		std::to_string(getMinSteeringAngle())	+ line_suffix +"\n";
+		msg += line_prefix + 	"stallTorque " + 			std::to_string(getStallTorque())		+ line_suffix +"\n";
+		msg += line_prefix + 	"maxSteeringRate " + 		std::to_string(getMaxSteeringRate())		+ line_suffix +"\n";
 		msg += block_suffix;
 		return msg;
 	}

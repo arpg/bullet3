@@ -13,16 +13,16 @@ protected:
 	virtual void debugDraw(btIDebugDraw* debugDrawer);
 
 public:
-	btWheelVehicle(btCollisionObject* chassisObject = new btCollisionObject());
+	btWheelVehicle();
 	~btWheelVehicle();
 
 	virtual btWheel* getWheel(int wheel);
 	inline virtual int getNumWheels() { return (int)m_wheels.size(); }
 	virtual void addWheel(const btVector3& chassisConnectionCS, btScalar width, btScalar radius);
 
-	virtual void setEnabledMotorForce(btScalar);
-	virtual void setEnabledTorqueForce(btScalar);
-	virtual void setEnabledBrakeForce(btScalar);
+	virtual void setEnabledAngularVelocity(btScalar);
+	virtual void setEnabledLinearVelocity(btScalar);
+	virtual void setEnabledAngularAcceleration(btScalar accel, btScalar dt);
 	virtual void setEnabledSteeringAngle(btScalar);
 
 	virtual void setAllFriction(btScalar);
@@ -30,17 +30,13 @@ public:
 	virtual void setAllDamping(btScalar);
 	virtual void setAllMaxTravel(btScalar);
 	
-	virtual void setAllMinMotorForce(btScalar);
-	virtual void setAllMaxMotorForce(btScalar);
-
-	virtual void setAllMinBrakeForce(btScalar);
-	virtual void setAllMaxBrakeForce(btScalar);
+	virtual void setAllMinAngularVelocity(btScalar);
+	virtual void setAllMaxAngularVelocity(btScalar);
 
 	virtual void setAllMinSteeringAngle(btScalar);
 	virtual void setAllMaxSteeringAngle(btScalar);
 
 	virtual std::vector<btWheel*>& getEnabledMotorWheels();
-	virtual std::vector<btWheel*>& getEnabledBrakeWheels();
 	virtual std::vector<btWheel*>& getEnabledSteeringWheels();
 
 	virtual btScalar getEnabledSteeringAngle();
