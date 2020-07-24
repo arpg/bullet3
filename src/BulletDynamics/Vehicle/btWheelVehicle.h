@@ -16,6 +16,8 @@ public:
 	btWheelVehicle();
 	~btWheelVehicle();
 
+	void resetSuspension();
+
 	virtual btWheel* getWheel(int wheel);
 	inline virtual int getNumWheels() { return (int)m_wheels.size(); }
 	virtual void addWheel(const btVector3& chassisConnectionCS, btScalar width, btScalar radius);

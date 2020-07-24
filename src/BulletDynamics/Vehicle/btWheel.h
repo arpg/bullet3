@@ -103,6 +103,7 @@ public:
 		// }
 		return 0;
 	}
+	inline btRigidBody* getRigidBody() const { return getBody(); }
 
 	inline virtual btVector3 getAxisVector(int axis) 
 	{

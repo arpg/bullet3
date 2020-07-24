@@ -36,6 +36,16 @@ void btWheelVehicle::debugDraw(btIDebugDraw* debugDrawer)
 	// }
 }
 
+void btWheelVehicle::resetSuspension()
+{
+	for(uint i=0; i<getNumWheels(); i++)
+	{
+		btTransform wheelTranCS = btTransform(btQuaternion(0,0,0,1), getWheel(i)->getChassisConnection());
+		btTransform wheelTranWS = getChassisWorldTransform() * wheelTranCS;
+		getWheel(i)->getRigidBody()->setCenterOfMassTransform(wheelTranWS);
+	}
+}
+
 void btWheelVehicle::addWheel(const btVector3& chassisConnectionCS, btScalar width, btScalar radius)
 {
 	const btVector3 wheelDirectionCS = -getUpVector();

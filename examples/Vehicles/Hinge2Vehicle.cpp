@@ -400,16 +400,16 @@ void Hinge2Vehicle::spawnCarPlannerCar()
 	// static float chassisHalfLength = 0.27+wheelRadius;
 	// static float chassisMass = 0.473f;
 
-	static float wheelRadius = 0.2f;
-	static float wheelHalfWidth = 0.1f;
+	static float wheelRadius = 0.165f;
+	static float wheelHalfWidth = 0.125f;
 	static float wheelMass = 1.0f;
 
 	static float suspensionStiffness = 200.f;
 	static float suspensionDamping = 2.3f;
 
 	static float chassisHalfWidth = 0.21;
-	static float chassisHalfHeight = 0.03;
-	static float chassisHalfLength = 0.37+wheelRadius;
+	static float chassisHalfHeight = 0.1;
+	static float chassisHalfLength = 0.27+wheelRadius;
 	static float chassisMass = 20.473f;
 
 	static float maxSteer = 30*B3_RADS_PER_DEG;

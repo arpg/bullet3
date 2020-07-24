@@ -219,7 +219,15 @@ void btHinge2Vehicle::updateConstraints()
 		hinge->setServo(HINGE2_STEERING_IDX, wheel->getMaxSteeringAngle()!=0.f);
 		hinge->setTargetVelocity(HINGE2_STEERING_IDX, wheel->getMaxSteeringRate());
 		hinge->setMaxMotorForce(HINGE2_STEERING_IDX, wheel->getStallTorque()/wheel->getRadius());
-		hinge->setServoTarget(HINGE2_STEERING_IDX, wheel->getSteeringAngle());
+		hinge->setServoTarget(HINGE2_STEERING_IDX, -wheel->getSteeringAngle());
+
+		// set wheel steering position instantaneously
+		// btTransform wheelTranCS = btTransform(btQuaternion(0,0,0,1), wheel->getChassisConnection());
+		// btMatrix3x3 yaw;
+		// yaw.setEulerZYX(0, 0, -wheel->getSteeringAngle());
+		// wheelTranCS.setBasis(yaw);
+		// btTransform wheelTranWS = getChassisWorldTransform() * wheelTranCS;
+		// wheel->getBody()->setCenterOfMassTransform(wheelTranWS);
 
 		// vertical suspension
 		hinge->enableSpring(HINGE2_SUSPENSION_IDX, true);
