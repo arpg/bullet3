@@ -9,6 +9,10 @@
 #include "btBulletCollisionCommon.h"
 // #include "Bullet3Common/b3Logging.h"
 
+#include "BulletSoftBody/btSoftBodyHelpers.h"
+#include "BulletSoftBody/btSoftBody.h"
+#include "TorusMesh.h"
+
 class btWheel
 {
 protected:

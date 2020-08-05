@@ -29,6 +29,7 @@ SET(BulletDynamics_SRCS
 	Dynamics/btSimpleDynamicsWorld.cpp
 #	Dynamics/Bullet-C-API.cpp
 	Vehicle/btWheel.cpp
+	Vehicle/btSoftWheel.cpp
 	Vehicle/btVehicle.cpp
 	Vehicle/btWheelVehicle.cpp
 	Vehicle/btHinge2Vehicle.cpp
@@ -90,6 +91,7 @@ SET(Dynamics_HDRS
 )
 SET(Vehicle_HDRS
 	Vehicle/btWheel.h
+	Vehicle/btSoftWheel.h
 	Vehicle/btVehicle.h
 	Vehicle/btWheelVehicle.h
 	Vehicle/btHinge2Vehicle.h

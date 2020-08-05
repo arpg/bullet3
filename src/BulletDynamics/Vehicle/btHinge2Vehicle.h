@@ -24,6 +24,10 @@
 
 #include "BulletDynamics/Vehicle/btWheelVehicle.h"
 #include "BulletDynamics/ConstraintSolver/btHinge2Constraint.h"
+#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+#include "BulletSoftBody/btSoftBody.h"
+
+class btSoftRigidDynamicsWorld;
 
 class btHinge2Vehicle : public btWheelVehicle
 {
@@ -56,6 +60,7 @@ public:
 								  btScalar maxTravel = -1.f, 
 								  btScalar friction = -1.f, 
 								  btScalar stallTorque = -1.f	);
+	btSoftBody* addSoftWheel();
 	virtual std::string wheel2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
 	virtual std::string constraint2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
 	
@@ -112,4 +117,55 @@ public:
 	btScalar maxSteeringRate;
 };
 
+class btDefaultHinge2VehicleSoft : public btDefaultHinge2Vehicle
+{
+public:
+
+	btDefaultHinge2VehicleSoft(
+		btSoftBodyWorldInfo m_softBodyWorldInfo,
+		btScalar _chassisHalfWidth = 0.25f, 
+		btScalar _chassisHalfHeight = 0.1f, 
+		btScalar _chassisHalfLength = 0.5f, 
+		btScalar _chassisMass = 10.f, 
+		btScalar _wheelRadius = 0.2f, 
+		btScalar _wheelHalfWidth = 0.1f, 
+		btScalar _wheelMass = 1.f, 
+		btScalar _suspensionStiffness = 200.f, 
+		btScalar _suspensionDamping = 2.3f,
+		btScalar _maxSteer = 30.f*M_PI/180.f,
+		btScalar _maxAngVel = 5.f/0.2f,
+		btScalar _maxTravel = 0.1f,
+		btScalar _wheelFriction = 1.f,
+		btScalar _stallTorque = 20.f,
+		btScalar _maxSteeringRate = 20.f
+	);
+	virtual ~btDefaultHinge2VehicleSoft() {};
+	void spawnTorus();
+	void spawn(btSoftRigidDynamicsWorld* world, btTransform initialPose = btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));
+
+	// virtual void updateVehicle(btScalar step) {};
+	// virtual void debugDraw(btIDebugDraw* debugDrawer) {};
+
+public:
+	btScalar chassisHalfWidth; 
+	btScalar chassisHalfHeight; 
+	btScalar chassisHalfLength; 
+	btScalar chassisMass; 
+	btScalar wheelRadius; 
+	btScalar wheelHalfWidth; 
+	btScalar wheelMass; 
+	btScalar suspensionStiffness; 
+	btScalar suspensionDamping;
+	btScalar maxSteer;
+	btScalar maxAngVel;
+	btScalar maxTravel;
+	btScalar wheelFriction;
+	btScalar stallTorque;
+	btScalar maxSteeringRate;
+	
+	btSoftBodyWorldInfo m_softBodyWorldInfo;
+	std::vector<btSoftBody*> m_softWheels;
+	std::vector<btTransform> m_wheelTrans;
+	std::vector<btRigidBody*> m_rigidWheels;
+};
 #endif  //BT_HINGE2VEHICLE_H

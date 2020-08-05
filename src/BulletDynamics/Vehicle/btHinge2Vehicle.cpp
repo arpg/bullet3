@@ -421,3 +421,212 @@ void btDefaultHinge2Vehicle::spawn(
 
 	updateConstraints();
 }
+
+btDefaultHinge2VehicleSoft::btDefaultHinge2VehicleSoft(
+	btSoftBodyWorldInfo _softBodyWorldInfo,
+	btScalar _chassisHalfWidth, 
+	btScalar _chassisHalfHeight, 
+	btScalar _chassisHalfLength, 
+	btScalar _chassisMass, 
+	btScalar _wheelRadius, 
+	btScalar _wheelHalfWidth, 
+	btScalar _wheelMass, 
+	btScalar _suspensionStiffness, 
+	btScalar _suspensionDamping,
+	btScalar _maxSteer,
+	btScalar _maxAngVel,
+	btScalar _maxTravel,
+	btScalar _wheelFriction,
+	btScalar _stallTorque,
+	btScalar _maxSteeringRate
+) : btDefaultHinge2Vehicle(),
+	chassisHalfWidth(_chassisHalfWidth),
+	chassisHalfHeight(_chassisHalfHeight),
+	chassisHalfLength(_chassisHalfLength),
+	chassisMass(_chassisMass),
+	wheelRadius(_wheelRadius), 
+	wheelHalfWidth(_wheelHalfWidth),
+	wheelMass(_wheelMass),
+	suspensionStiffness(_suspensionStiffness),
+	suspensionDamping(_suspensionDamping),
+	maxSteer(_maxSteer),
+	maxAngVel(_maxAngVel),
+	maxTravel(_maxTravel),
+	wheelFriction(_wheelFriction),
+	stallTorque(_stallTorque),
+	maxSteeringRate(_maxSteeringRate)
+{
+	m_softBodyWorldInfo = _softBodyWorldInfo;
+}
+
+static struct MotorControl : btSoftBody::AJoint::IControl
+{
+	MotorControl()
+	{
+		goal = 0;
+		maxtorque = 0;
+	}
+	btScalar Speed(btSoftBody::AJoint*, btScalar current)
+	{
+		return (current + btMin(maxtorque, btMax(-maxtorque, goal - current)));
+	}
+	btScalar goal = 0;
+	btScalar maxtorque = 0;
+} motorcontrol;
+
+//
+struct SteerControl : btSoftBody::AJoint::IControl
+{
+	SteerControl(btScalar s)
+	{
+		angle = 0;
+		sign = s;
+	}
+	void Prepare(btSoftBody::AJoint* joint)
+	{
+		joint->m_refs[0][0] = btCos(angle * sign);
+		joint->m_refs[0][2] = btSin(angle * sign);
+	}
+	btScalar Speed(btSoftBody::AJoint* joint, btScalar current)
+	{
+		return (motorcontrol.Speed(joint, current));
+	}
+	btScalar angle;
+	btScalar sign;
+};
+
+static SteerControl steercontrol_f(+1);
+static SteerControl steercontrol_r(-1);
+
+static btSoftBody* initTorus(btSoftBodyWorldInfo m_softBodyWorldInfo, const btVector3& x, const btVector3& a, const btVector3& s = btVector3(0.1, 0.3, 0.1))
+{
+	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(m_softBodyWorldInfo, gVertices,
+														   &gIndices[0][0],NUM_TRIANGLES);
+	btSoftBody::Material* pm = psb->appendMaterial();
+	pm->m_kLST = 0.1;
+	pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
+	psb->generateBendingConstraints(2, pm);
+	psb->m_cfg.piterations = 2;
+	psb->m_cfg.collisions = btSoftBody::fCollision::CL_SS +
+							btSoftBody::fCollision::CL_RS;
+	psb->m_cfg.kDF = 1;
+	psb->randomizeConstraints();
+	psb->scale(s);
+	psb->rotate(btQuaternion(a[0], a[1], a[2]));
+	psb->translate(x);
+	psb->setTotalMass(2, true);
+	psb->generateClusters(64);
+	psb->setPose(false, true);
+
+	return psb;
+}
+
+void btDefaultHinge2VehicleSoft::spawnTorus()
+{
+	btSoftBody* sb0 = m_softWheels[0]; // front right
+	btSoftBody* sb1 = m_softWheels[1]; // front left
+	// btSoftBody* sb2 = m_softWheels[2]; // back left
+	// btSoftBody* sb3 = m_softWheels[3]; // back right
+	// btSoftBody* sbs[] = {sb0, sb1, sb2, sb3};
+	btSoftBody* sbs[] = {sb0, sb1};
+	for (int i = 0; i < 2; ++i)
+	{
+		sbs[i]->m_cfg.kDF = 1;
+		sbs[i]->m_cfg.kDP = 0;
+		sbs[i]->m_cfg.piterations = 1;
+		sbs[i]->m_clusters[0]->m_matching = 0.05;
+		sbs[i]->m_clusters[0]->m_ndamping = 0.05;
+	}
+
+	btSoftBody::AJoint::Specs ajf;
+	ajf.axis = btVector3(0, 0, 1);
+	ajf.icontrol = &motorcontrol;
+	sb0->appendAngularJoint(ajf, sb1);
+	// sb3->appendAngularJoint(ajf, sb2);
+
+	// btSoftBody::LJoint::Specs lj0, lj1, lj2, lj3;
+	btSoftBody::LJoint::Specs lj0, lj1;
+	lj0.position = btVector3(m_wheelTrans[0].getOrigin());
+	lj1.position = btVector3(m_wheelTrans[1].getOrigin());
+	// lj2.position = btVector3(m_wheelTrans[2].getOrigin());
+	// lj3.position = btVector3(m_wheelTrans[3].getOrigin());
+	sb0->appendLinearJoint(lj0, m_rigidWheels[0]);
+	sb0->appendLinearJoint(lj0, sb1);
+	sb1->appendLinearJoint(lj1, m_rigidWheels[1]);
+	sb1->appendLinearJoint(lj1, sb0);
+	// sb2->appendLinearJoint(lj2, m_rigidWheels[2]);
+	// sb2->appendLinearJoint(lj2, sb3);
+	// sb3->appendLinearJoint(lj3, m_rigidWheels[3]);
+	// sb3->appendLinearJoint(lj3, sb2);
+}
+
+void btDefaultHinge2VehicleSoft::spawn(btSoftRigidDynamicsWorld* world, btTransform initialPose)
+{
+	btCollisionShape* chassisShape = new btBoxShape(btVector3(chassisHalfLength, chassisHalfWidth, chassisHalfHeight));
+
+	btRigidBody* chassisBody = createLocalRigidBody(chassisMass, initialPose, chassisShape);
+	setChassisBody(chassisBody);
+	world->addRigidBody(chassisBody);
+
+	world->addAction(this);
+
+	btCollisionShape* wheelShape = new btCylinderShape(btVector3(wheelRadius, wheelHalfWidth, wheelRadius));
+
+	btVector3 a(0, 0, 0);
+
+	// front right
+	btVector3 FRWheelPosCS = btVector3(	 btScalar(chassisHalfLength-wheelRadius+.2), -btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);//-cog;
+	{
+		btVector3 wheelPosCS = FRWheelPosCS;
+		// btVector3 wheelPosCS = btVector3(	btScalar(chassisHalfLength-wheelRadius+.2), -btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);
+		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
+		m_rigidWheels.push_back(wheelBody);
+		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a);
+		world->addSoftBody(torus);
+		m_softWheels.push_back(torus);
+		m_wheelTrans.push_back(wheelTranWS);
+		world->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = addWheel2(wheelBody, maxSteer, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, wheelFriction, stallTorque);
+		world->addConstraint(constraint, true);
+	}
+	// front left
+	{
+		btVector3 wheelPosCS = FRWheelPosCS*btVector3(1,-1,1);
+		// btVector3 wheelPosCS = btVector3(	 btScalar(chassisHalfLength-wheelRadius+.2),  btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);
+		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
+		m_rigidWheels.push_back(wheelBody);
+		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a);
+		world->addSoftBody(torus);
+		m_softWheels.push_back(torus);
+		m_wheelTrans.push_back(wheelTranWS);
+		world->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = addWheel2(wheelBody, maxSteer, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, wheelFriction, stallTorque);
+		world->addConstraint(constraint, true);
+	}
+	// back left
+	{
+		btVector3 wheelPosCS = FRWheelPosCS*btVector3(-1,-1,1);
+		// btVector3 wheelPosCS = btVector3(	-btScalar(chassisHalfLength-wheelRadius+.2),  btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);
+		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
+		world->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = addWheel2(wheelBody, 0.f, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, wheelFriction, stallTorque);
+		world->addConstraint(constraint, true);
+	}
+	// back right
+	{
+		btVector3 wheelPosCS = FRWheelPosCS*btVector3(-1,1,1);
+		// btVector3 wheelPosCS = btVector3(	-btScalar(chassisHalfLength-wheelRadius+.2), -btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);
+		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
+		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
+		world->addRigidBody(wheelBody);
+		btTypedConstraint* constraint = addWheel2(wheelBody, 0.f, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, wheelFriction, stallTorque);
+		world->addConstraint(constraint, true);
+	}
+
+	spawnTorus();
+
+	updateConstraints();
+}

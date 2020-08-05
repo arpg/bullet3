@@ -3,6 +3,7 @@
 
 #include "BulletDynamics/Vehicle/btVehicle.h"
 #include "btWheel.h"
+#include "btSoftWheel.h"
 
 class btWheelVehicle : public btVehicle
 {

@@ -1109,7 +1109,7 @@ static btSoftBody* Ctor_ClusterBunny(SoftDemo* pdemo, const btVector3& x, const 
 }
 
 //
-static btSoftBody* Ctor_ClusterTorus(SoftDemo* pdemo, const btVector3& x, const btVector3& a, const btVector3& s = btVector3(2, 2, 2))
+static btSoftBody* Ctor_ClusterTorus(SoftDemo* pdemo, const btVector3& x, const btVector3& a, const btVector3& s = btVector3(0.25, 0.25, 0.25))
 {
 	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(pdemo->m_softBodyWorldInfo, gVertices, &gIndices[0][0], NUM_TRIANGLES);
 	btSoftBody::Material* pm = psb->appendMaterial();
