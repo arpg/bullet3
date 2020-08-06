@@ -203,6 +203,12 @@ btHinge2Constraint* btHinge2Vehicle::addWheel(btRigidBody* wheelBody)
 	// getWheel(i)->getBody()->setRollingFriction(0.05);
 }
 
+void btHinge2Vehicle::configureForDriveMode()
+{
+	btWheelVehicle::configureForDriveMode();
+	updateConstraints();
+}
+
 void btHinge2Vehicle::updateConstraints()
 {
 	for (uint i=0; i<getNumWheels(); i++)
@@ -386,7 +392,7 @@ void btDefaultHinge2Vehicle::spawn(
 	btCollisionShape* wheelShape = new btCylinderShape(btVector3(wheelRadius, wheelHalfWidth, wheelRadius));
 
 	// front right
-	btVector3 FRWheelPosCS = btVector3(	 btScalar(chassisHalfLength-wheelRadius+.2), -btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);//-cog;
+	btVector3 FRWheelPosCS = btVector3(	 btScalar(chassisHalfLength-wheelRadius), -btScalar(chassisHalfWidth + wheelHalfWidth),	btScalar(-chassisHalfHeight)	);//-cog;
 	{
 		btVector3 wheelPosCS = FRWheelPosCS;
 		// btVector3 wheelPosCS = btVector3(	btScalar(chassisHalfLength-wheelRadius+.2), -btScalar(chassisHalfWidth + wheelHalfWidth+.1),	btScalar(-chassisHalfHeight)	);

@@ -6,8 +6,15 @@
 
 class btWheelVehicle : public btVehicle
 {
+public:
+	enum DriveMode{ DIFF=0, ACKERMANN=1, DUAL_ACKERMANN=2};
+
 protected:
 	btAlignedObjectArray<btWheel*> m_wheels;
+
+	btWheelVehicle::DriveMode m_driveMode;
+
+	virtual void configureForDriveMode();
 
 	virtual void updateVehicle(btScalar step) = 0;
 	virtual void debugDraw(btIDebugDraw* debugDrawer);
@@ -15,6 +22,8 @@ protected:
 public:
 	btWheelVehicle();
 	~btWheelVehicle();
+
+    void setDriveMode(DriveMode);
 
 	void resetSuspension();
 
@@ -26,6 +35,7 @@ public:
 	virtual void setEnabledLinearVelocity(btScalar);
 	virtual void setEnabledAngularAcceleration(btScalar accel, btScalar dt);
 	virtual void setEnabledSteeringAngle(btScalar);
+	virtual void setEnabledYawVelocity(btScalar);
 
 	virtual void setAllFriction(btScalar);
 	virtual void setAllStiffness(btScalar);

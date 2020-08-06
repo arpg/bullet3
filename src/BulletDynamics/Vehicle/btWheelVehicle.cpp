@@ -2,7 +2,8 @@
 class btWheelVehicle;
 
 btWheelVehicle::btWheelVehicle()
-	: btVehicle()
+	: btVehicle(),
+	  m_driveMode(ACKERMANN)
 {	
 }
 
@@ -36,6 +37,11 @@ void btWheelVehicle::debugDraw(btIDebugDraw* debugDrawer)
 	// }
 }
 
+void btWheelVehicle::setDriveMode(DriveMode mode)
+{
+	m_driveMode = mode;
+}
+
 void btWheelVehicle::resetSuspension()
 {
 	for(uint i=0; i<getNumWheels(); i++)
@@ -62,7 +68,7 @@ btWheel* btWheelVehicle::getWheel(int wheel)
 
 void btWheelVehicle::setEnabledAngularVelocity(btScalar val)
 {
-	printf("Setting ang vel %f rad/s\n", val);
+	// printf("Setting ang vel %f rad/s\n", val);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
@@ -73,7 +79,7 @@ void btWheelVehicle::setEnabledAngularVelocity(btScalar val)
 }
 void btWheelVehicle::setEnabledLinearVelocity(btScalar val)
 {
-	printf("Setting lin vel %f m/s\n", val);
+	// printf("Setting lin vel %f m/s\n", val);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
@@ -84,7 +90,7 @@ void btWheelVehicle::setEnabledLinearVelocity(btScalar val)
 }
 void btWheelVehicle::setEnabledAngularAcceleration(btScalar accel, btScalar dt)
 {
-	printf("Setting ang accel %f over %f sec\n", accel, dt);
+	// printf("Setting ang accel %f over %f sec\n", accel, dt);
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isMotorEnabled()) // not necessary but good habit
@@ -95,12 +101,64 @@ void btWheelVehicle::setEnabledAngularAcceleration(btScalar accel, btScalar dt)
 }
 void btWheelVehicle::setEnabledSteeringAngle(btScalar val)
 {
-	printf("Setting steering %f rad\n", val);
+	// printf("Setting steering %f rad\n", val);
+
 	for(uint i=0; i<getNumWheels(); i++)
 	{
 		if (getWheel(i)->isSteeringEnabled())
 		{
 			getWheel(i)->setSteeringAngle(val);
+		}
+	}
+}
+void btWheelVehicle::setEnabledYawVelocity(btScalar val)
+{
+	printf("Setting yaw vel %f rad/s", val);
+
+	configureForDriveMode();
+
+	switch (m_driveMode)
+	{
+		case DriveMode::DIFF :
+		{
+			printf(" in diff mode\n");
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
+				btScalar lin_vel = getCurrentSpeedMS() - wheelTranCS.getOrigin()[getRightAxis()] * val;
+				btScalar ang_vel = lin_vel / getWheel(i)->getRadius();
+				printf("\twheel %d ang vel %f rad/s\n", i, ang_vel);
+				getWheel(i)->setAngularVelocity(ang_vel);
+			}
+			break;
+		}
+		case DriveMode::ACKERMANN :
+		{
+			printf(" in ackermann mode\n");
+			btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(0)->getWorldTransform();
+			btScalar wheel_base = 2*fabs(wheelTranCS.getOrigin()[getForwardAxis()]);
+			btScalar steering_angle = atan2(val * wheel_base, getCurrentSpeedMS());
+			printf("\tenabled steering %f rad\n", steering_angle);
+			setEnabledSteeringAngle(steering_angle);
+			break;
+		}
+		case DriveMode::DUAL_ACKERMANN :
+		{
+			printf(" in dual ackermann mode\n");
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
+				btScalar wheel_base = wheelTranCS.getOrigin()[getForwardAxis()];
+				btScalar steering_angle = atan2(val * wheel_base, getCurrentSpeedMS());
+				// setEnabledSteeringAngle(atan2(val * wheel_base, getCurrentSpeedMS()));
+				printf("\twheel %d steering %f rad\n", i, steering_angle);
+				getWheel(i)->setSteeringAngle(steering_angle);
+			}
+			break;
+		}
+		default:
+		{
+			break;
 		}
 	}
 }
@@ -112,7 +170,7 @@ void btWheelVehicle::setAllFriction(btScalar val)
 		getWheel(i)->setFriction(val);
 	}
 }
-void btWheelVehicle::btWheelVehicle::setAllStiffness(btScalar val)
+void btWheelVehicle::setAllStiffness(btScalar val)
 {
 	for(uint i=0; i<getNumWheels(); i++)
 	{
@@ -202,4 +260,50 @@ btScalar btWheelVehicle::getEnabledSteeringAngle()
 		}
 	}
 	return 0.f;
+}
+
+void btWheelVehicle::configureForDriveMode()
+{
+	switch (m_driveMode)
+	{
+		case DriveMode::DIFF:
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				// getWheel(i)->setSteeringAngle(0);
+				getWheel(i)->setMinSteeringAngle(0);
+				getWheel(i)->setMaxSteeringAngle(0);
+			}
+			break;
+
+		case DriveMode::ACKERMANN:
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				// getWheel(i)->setSteeringAngle(0);
+				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
+				if (wheelTranCS.getOrigin()[getForwardAxis()] > 0) // front wheel
+				{
+					getWheel(i)->setMinSteeringAngle(-0.4);
+					getWheel(i)->setMaxSteeringAngle(0.4);
+				}
+				else // back wheel
+				{
+					getWheel(i)->setMinSteeringAngle(0);
+					getWheel(i)->setMaxSteeringAngle(0);
+				}
+			}
+			break;
+
+		case DriveMode::DUAL_ACKERMANN:
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				// getWheel(i)->setSteeringAngle(0);
+				getWheel(i)->setMinSteeringAngle(-0.4);
+				getWheel(i)->setMaxSteeringAngle(0.4);
+				
+			}
+			break;
+
+		default:
+			break;
+	}
 }

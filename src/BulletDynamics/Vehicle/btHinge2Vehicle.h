@@ -59,6 +59,7 @@ public:
 	virtual std::string wheel2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
 	virtual std::string constraint2str(int i, std::string block_prefix, std::string block_suffix, std::string line_prefix, std::string line_suffix);
 	
+	void configureForDriveMode();
 	void updateConstraints();	
 	virtual btHinge2Constraint* getConstraint(int constraint);
 

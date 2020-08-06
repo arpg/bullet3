@@ -9,6 +9,8 @@
 #include "btBulletCollisionCommon.h"
 // #include "Bullet3Common/b3Logging.h"
 
+#include "btVehicleRaycaster.h"
+
 class btWheel
 {
 protected:
@@ -88,7 +90,17 @@ public:
 	}
 
 	// getters
-	inline virtual btVector3 getChassisConnection() { return m_chassisConnectionCS; }
+	inline virtual btVector3 getChassisConnection() { return getChassisConnectionCS(); }
+	inline virtual btVector3 getWheelDirection() { return getWheelDirectionCS(); }
+	inline virtual btVector3 getWheelAxle() { return getWheelAxleCS(); }
+
+	inline virtual btVector3 getChassisConnectionCS() { return m_chassisConnectionCS; }
+	inline virtual btVector3 getWheelDirectionCS() { return m_wheelDirectionCS; }
+	inline virtual btVector3 getWheelAxleCS() { return m_wheelAxleCS; }
+
+	inline virtual btVector3 getChassisConnectionWS() { return getChassisConnectionCS() * getWorldTransform().inverse().getBasis(); }
+	inline virtual btVector3 getWheelDirectionWS() { return getWheelDirectionCS() * getWorldTransform().inverse().getBasis(); }
+	inline virtual btVector3 getWheelAxleWS() { return getWheelAxleCS() * getWorldTransform().inverse().getBasis(); }
 
 	inline virtual btCollisionObject* getObject() const { return m_collisionObject; }
 	inline virtual btCollisionShape* getShape() const { return getObject()->getCollisionShape(); }
@@ -163,6 +175,9 @@ public:
 	inline virtual void setStallTorque(btScalar val) { m_stallTorque = val; }
 
 	inline virtual void setMaxSteeringRate(btScalar val) { m_maxSteeringRate = val; }
+
+	void castRay(btVehicleRaycaster*, btVehicleRaycaster::btVehicleRaycasterResult&);
+	bool isInContact(btVehicleRaycaster*);
 
 	// btVector3 fric = static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->getRigidBodyB().getWorldTransform().getBasis().getColumn(2) * 1.0
 	// 	+ static_cast<btHinge2Constraint*>(m_wheels[backLeftWheelIndex])->getRigidBodyB().getWorldTransform().getBasis().getColumn(0) * 1.0;
