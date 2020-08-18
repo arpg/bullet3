@@ -498,11 +498,18 @@ struct SteerControl : btSoftBody::AJoint::IControl
 static SteerControl steercontrol_f(+1);
 static SteerControl steercontrol_r(-1);
 
-static btSoftBody* initTorus(btSoftBodyWorldInfo m_softBodyWorldInfo, const btVector3& x, const btVector3& a, const btVector3& s = btVector3(0.1, 0.3, 0.1))
+static btSoftBody* initTorus(btSoftBodyWorldInfo m_softBodyWorldInfo, const btVector3& x, const btVector3& a, btRigidBody* rimBody, const btVector3& s = btVector3(0.1, 0.3, 0.1))
 {
 	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(m_softBodyWorldInfo, gVertices,
 														   &gIndices[0][0],NUM_TRIANGLES);
 	btSoftBody::Material* pm = psb->appendMaterial();
+	for (uint i=0; i<psb->m_nodes.size(); i++)
+	{
+		if (pow(pow(psb->m_nodes[i].m_x[0],2)+pow(psb->m_nodes[i].m_x[2],2),0.5)<2)
+		{
+			psb->appendAnchor(i, rimBody);	
+		}
+	}
 	pm->m_kLST = 0.1;
 	pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
 	psb->generateBendingConstraints(2, pm);
@@ -514,7 +521,7 @@ static btSoftBody* initTorus(btSoftBodyWorldInfo m_softBodyWorldInfo, const btVe
 	psb->scale(s);
 	psb->rotate(btQuaternion(a[0], a[1], a[2]));
 	psb->translate(x);
-	psb->setTotalMass(2, true);
+	psb->setTotalMass(1, true);
 	psb->generateClusters(64);
 	psb->setPose(false, true);
 
@@ -582,7 +589,7 @@ void btDefaultHinge2VehicleSoft::spawn(btSoftRigidDynamicsWorld* world, btTransf
 		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a);
+		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a, wheelBody);
 		world->addSoftBody(torus);
 		m_softWheels.push_back(torus);
 		m_wheelTrans.push_back(wheelTranWS);
@@ -597,7 +604,7 @@ void btDefaultHinge2VehicleSoft::spawn(btSoftRigidDynamicsWorld* world, btTransf
 		btTransform wheelTranWS = getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = createLocalRigidBody(wheelMass, wheelTranWS, wheelShape);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a);
+		btSoftBody* torus = initTorus(m_softBodyWorldInfo, wheelTranWS.getOrigin(), a, wheelBody);
 		world->addSoftBody(torus);
 		m_softWheels.push_back(torus);
 		m_wheelTrans.push_back(wheelTranWS);
@@ -626,7 +633,7 @@ void btDefaultHinge2VehicleSoft::spawn(btSoftRigidDynamicsWorld* world, btTransf
 		world->addConstraint(constraint, true);
 	}
 
-	spawnTorus();
+	// spawnTorus();
 
 	updateConstraints();
 }

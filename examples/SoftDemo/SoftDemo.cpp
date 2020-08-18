@@ -1008,8 +1008,10 @@ static void Init_Torus(SoftDemo* pdemo)
 	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(pdemo->m_softBodyWorldInfo, gVertices,
 														   &gIndices[0][0],
 														   NUM_TRIANGLES);
+	
 	psb->generateBendingConstraints(2);
 	psb->m_cfg.piterations = 2;
+
 	psb->randomizeConstraints();
 	btMatrix3x3 m;
 	m.setEulerZYX(SIMD_PI / 2, 0, 0);
@@ -1017,6 +1019,7 @@ static void Init_Torus(SoftDemo* pdemo)
 	psb->scale(btVector3(2, 2, 2));
 	psb->setTotalMass(50, true);
 	pdemo->getSoftDynamicsWorld()->addSoftBody(psb);
+	
 	pdemo->m_cutting = true;
 }
 
@@ -1029,8 +1032,10 @@ static void Init_TorusMatch(SoftDemo* pdemo)
 	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(pdemo->m_softBodyWorldInfo, gVertices,
 														   &gIndices[0][0],
 														   NUM_TRIANGLES);
+	
 	psb->m_materials[0]->m_kLST = 0.1;
 	psb->m_cfg.kMT = 0.05;
+
 	psb->randomizeConstraints();
 	btMatrix3x3 m;
 	m.setEulerZYX(SIMD_PI / 2, 0, 0);

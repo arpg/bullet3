@@ -113,7 +113,7 @@ public:
 	{
 		return (btSoftRigidDynamicsWorld*)m_dynamicsWorld;
 	}
-	btSoftBody* initTorus(const btVector3& x, const btVector3& a, const btVector3& s);
+	btSoftBody* initTorus(const btVector3& x, const btVector3& a, btRigidBody* rimBody, const btVector3& s);
 	void initTorus2();
 	void softRigidTest();
 
@@ -153,14 +153,14 @@ static void preTickCallback(btDynamicsWorld* world, btScalar timeStep)
 	info->setTargets();
 	// fps = 1/timeStep;
 
-	std::string prtmsg;
-	for (int i = 0; i < info->m_vehicle->getNumWheels(); i++)
-	{
-		prtmsg += "Wheel "+std::to_string(i)+":\n";
-		prtmsg += info->m_vehicle->wheel2str(i,"","","\t","");
-	}
-	std::cout << prtmsg;
-	std::cout << "Speed " << std::to_string(info->m_vehicle->getCurrentSpeedMS()) << " m/s" << std::endl;
+	// std::string prtmsg;
+	// for (int i = 0; i < info->m_vehicle->getNumWheels(); i++)
+	// {
+	// 	prtmsg += "Wheel "+std::to_string(i)+":\n";
+	// 	prtmsg += info->m_vehicle->wheel2str(i,"","","\t","");
+	// }
+	// std::cout << prtmsg;
+	// std::cout << "Speed " << std::to_string(info->m_vehicle->getCurrentSpeedMS()) << " m/s" << std::endl;
 }
 
 void Hinge2Vehicle::initPhysics()
@@ -230,7 +230,7 @@ void Hinge2Vehicle::initPhysics()
 	// m_softBodyWorldInfo.m_sparsesdf.Reset();
 
 	spawnEnvironment();
-	btSoftBody* tmp = initTorus(btVector3(0, 0, 10), btVector3(0, 0, SIMD_PI / 2), btVector3(0.25, 0.25, 0.25));
+	// btSoftBody* tmp = initTorus(btVector3(0, 0, 10), btVector3(0, 0, SIMD_PI / 2), btVector3(0.25, 0.25, 0.25));
 	spawnCar();
 	// spawnCarPlannerCar();
 	// spawnCarPlannerCarSoft();
@@ -338,12 +338,12 @@ struct SteerControl : btSoftBody::AJoint::IControl
 static SteerControl steercontrol_f(+1);
 static SteerControl steercontrol_r(-1);
 
-btSoftBody* Hinge2Vehicle::initTorus(const btVector3& x, const btVector3& a, const btVector3& s = btVector3(0.1, 0.3, 0.1))
+btSoftBody* Hinge2Vehicle::initTorus(const btVector3& x, const btVector3& a, btRigidBody* rimBody, const btVector3& s = btVector3(0.1333, 0.3, 0.1333))
 {
 	btSoftBody* psb = btSoftBodyHelpers::CreateFromTriMesh(m_softBodyWorldInfo, gVertices,
 														   &gIndices[0][0],NUM_TRIANGLES);
 	btSoftBody::Material* pm = psb->appendMaterial();
-	pm->m_kLST = 0.1;
+	pm->m_kLST = 0.7;
 	pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
 	psb->generateBendingConstraints(2, pm);
 	psb->m_cfg.piterations = 2;
@@ -358,6 +358,18 @@ btSoftBody* Hinge2Vehicle::initTorus(const btVector3& x, const btVector3& a, con
 	psb->generateClusters(64);
 	psb->setPose(false, true);
 	getSoftDynamicsWorld()->addSoftBody(psb);
+
+	for (uint i=0; i<psb->m_nodes.size(); i++)
+	{
+		std::cout << "*** " << std::to_string(i) << " " << std::to_string(psb->m_nodes[i].m_x[0]) << " " << std::to_string(psb->m_nodes[i].m_x[2]) << " " << std::to_string(psb->m_nodes[i].m_x[2]) << std::endl;
+		if (pow(pow(psb->m_nodes[i].m_x[0],2)+pow(psb->m_nodes[i].m_x[2],2),0.5)<2)
+		{
+			std::cout << "HERE" << std::endl;
+			// psb->m_nodes[i].m_x[0] =
+			psb->appendAnchor(i, rimBody);	
+		}
+	}
+
 	return (psb);
 }
 
@@ -477,7 +489,7 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), a);
+		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), a, wheelBody);
 		m_softWheels.push_back(torus);
 		m_softWheelTrans.push_back(wheelTranWS);
 		m_dynamicsWorld->addRigidBody(wheelBody);
@@ -490,7 +502,7 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), a);
+		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), a, wheelBody);
 		m_softWheels.push_back(torus);
 		m_softWheelTrans.push_back(wheelTranWS);
 		m_dynamicsWorld->addRigidBody(wheelBody);
@@ -503,7 +515,7 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), btVector3(0, 0, SIMD_PI));
+		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), btVector3(0, 0, SIMD_PI), wheelBody);
 		m_softWheels.push_back(torus);
 		m_softWheelTrans.push_back(wheelTranWS);
 		m_dynamicsWorld->addRigidBody(wheelBody);
@@ -516,14 +528,14 @@ void Hinge2Vehicle::spawnVehicle(btVector3 chassisHalfExtents, btScalar chassisM
 		btTransform wheelTranWS = m_vehicle->getChassisWorldTransform() * btTransform(btQuaternion(0,0,0,1), wheelPosCS);
 		btRigidBody* wheelBody = btVehicle::createLocalRigidBody(wheelMass, wheelTranWS, wheelShape, wheelColor);
 		m_rigidWheels.push_back(wheelBody);
-		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), btVector3(0, 0, SIMD_PI));
+		btSoftBody* torus = initTorus(wheelTranWS.getOrigin(), btVector3(0, 0, SIMD_PI), wheelBody);
 		m_softWheels.push_back(torus);
 		m_softWheelTrans.push_back(wheelTranWS);
 		m_dynamicsWorld->addRigidBody(wheelBody);
 		btTypedConstraint* constraint = m_vehicle->addWheel2(wheelBody, 0.f, maxAngVel, suspensionStiffness, suspensionDamping, maxTravel, friction, stallTorque);
 		m_dynamicsWorld->addConstraint(constraint, true);
 	}
-	spawnTorus();
+	// spawnTorus();
 	m_vehicle->updateConstraints();
 
 	// for (int i = 0; i < 4; i++)
