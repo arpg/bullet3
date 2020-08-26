@@ -3,9 +3,10 @@ class btWheelVehicle;
 
 btWheelVehicle::btWheelVehicle()
 	: btVehicle(),
-	  m_driveMode(ACKERMANN)
+	  m_driveMode(DIFF)
 {	
 }
+
 
 btWheelVehicle::~btWheelVehicle()
 {
@@ -111,7 +112,8 @@ void btWheelVehicle::setEnabledSteeringAngle(btScalar val)
 		}
 	}
 }
-void btWheelVehicle::setEnabledYawVelocity(btScalar val)
+
+void btWheelVehicle::setEnabledYawVelocity(btScalar val, btScalar lspeed = 0)
 {
 	printf("Setting yaw vel %f rad/s", val);
 
@@ -122,14 +124,25 @@ void btWheelVehicle::setEnabledYawVelocity(btScalar val)
 		case DriveMode::DIFF :
 		{
 			printf(" in diff mode\n");
-			for(uint i=0; i<getNumWheels(); i++)
-			{
-				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
-				btScalar lin_vel = getCurrentSpeedMS() - wheelTranCS.getOrigin()[getRightAxis()] * val;
-				btScalar ang_vel = lin_vel / getWheel(i)->getRadius();
-				printf("\twheel %d ang vel %f rad/s\n", i, ang_vel);
-				getWheel(i)->setAngularVelocity(ang_vel);
-			}
+			// for(uint i=0; i<getNumWheels(); i++)
+			// {
+			// 	btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
+			// 	btScalar lin_vel = getCurrentSpeedMS() - wheelTranCS.getOrigin()[getRightAxis()] * val;
+			// 	btScalar ang_vel = lin_vel / getWheel(i)->getRadius();
+			// 	printf("\twheel %d ang vel %f rad/s\n", i, ang_vel);
+      //   printf("\t %d lin vel %f rad/s\n", i, lin_vel);
+			// 	getWheel(i)->setAngularVelocity(ang_vel);
+			// }
+
+      			btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(0)->getWorldTransform();
+      			btScalar wheel_base = 2*fabs(wheelTranCS.getOrigin()[getForwardAxis()]);
+      			btScalar ang_vel_r = (lspeed + val*wheel_base/2.0); 
+      			btScalar ang_vel_l = (lspeed - val*wheel_base/2.0);
+
+			getWheel(0)->setAngularVelocity(ang_vel_r/getWheel(0)->getRadius());
+      			getWheel(1)->setAngularVelocity(ang_vel_l/getWheel(1)->getRadius());
+      			getWheel(2)->setAngularVelocity(ang_vel_l/getWheel(2)->getRadius());
+      			getWheel(3)->setAngularVelocity(ang_vel_r/getWheel(3)->getRadius());
 			break;
 		}
 		case DriveMode::ACKERMANN :

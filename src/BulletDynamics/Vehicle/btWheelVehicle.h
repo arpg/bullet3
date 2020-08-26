@@ -35,7 +35,7 @@ public:
 	virtual void setEnabledLinearVelocity(btScalar);
 	virtual void setEnabledAngularAcceleration(btScalar accel, btScalar dt);
 	virtual void setEnabledSteeringAngle(btScalar);
-	virtual void setEnabledYawVelocity(btScalar);
+	virtual void setEnabledYawVelocity(btScalar , btScalar);
 
 	virtual void setAllFriction(btScalar);
 	virtual void setAllStiffness(btScalar);

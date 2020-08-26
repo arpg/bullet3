@@ -57,6 +57,8 @@ public:
 	btScalar m_vehicleForce;
 	btScalar m_vehicleSteering;
 
+  btScalar targetYawVelocity;
+  
 	Hinge2Vehicle(struct GUIHelperInterface* helper);
 
 	virtual ~Hinge2Vehicle();
@@ -715,9 +717,11 @@ bool Hinge2Vehicle::keyboardCallback(int key, int state)
 
 void Hinge2Vehicle::setTargets()
 {
+  //m_vehicle->setDriveMode(btWheelVehicle::DriveMode::ACKERMANN);
+
 	static btScalar vel_tau;
 	float vel_max = 6.f;
-	float vel_diff = 0.05f;
+	float vel_diff = 0.01f;
 
 	if (throttle_up)
 	{
@@ -731,7 +735,7 @@ void Hinge2Vehicle::setTargets()
 	}
 	else //if (!throttle_down && !throttle_up)
 	{
-		vel_tau = 0.f;
+		//vel_tau = 0.f;
 	}
 	// btScalar maxTargetVelocity = 4.f;
 	// std::vector<float> vel_profile = {0, 0.5*maxTargetVelocity, maxTargetVelocity}; 
@@ -769,26 +773,42 @@ void Hinge2Vehicle::setTargets()
 	// else if (m_vehicle->getChassisForwardVelocity() < targetVelocity)
 	// 	targetForce = vel_tau*100.f;
 
-	m_vehicle->setEnabledLinearVelocity(vel_tau);
+ 
+	// btScalar targetSteering;
 
-	btScalar targetSteering;
+	// if (steer_left)
+	// {
+	// 	targetSteering = m_vehicle->getEnabledSteeringAngle() - 0.025;
+	// }
+	// else if (steer_right)
+	// {
+	// 	targetSteering = m_vehicle->getEnabledSteeringAngle() + 0.025;
+	// }
+	// else
+	// {
+	// 	targetSteering = m_vehicle->getEnabledSteeringAngle() * 0.96;
+	// }
+	// m_vehicle->setEnabledSteeringAngle(targetSteering);
+
 	if (steer_left)
-	{
-		targetSteering = m_vehicle->getEnabledSteeringAngle() - 0.025;
-	}
+    {
+      targetYawVelocity +=  0.01; 
+    }
 	else if (steer_right)
-	{
-		targetSteering = m_vehicle->getEnabledSteeringAngle() + 0.025;
-	}
+    {
+      targetYawVelocity -=  0.01; 
+    }
 	else
-	{
-		targetSteering = m_vehicle->getEnabledSteeringAngle() * 0.96;
-	}
-	m_vehicle->setEnabledSteeringAngle(targetSteering);
-
-	// printf("Setting force %f steer %f\n", targetForce, targetSteering);
-
-	// m_vehicle->applyForces();	
+    {
+      //targetYawVelocity = 0;
+    }
+	  //m_vehicle->setEnabledLinearVelocity(vel_tau);
+  	
+  	// For diff drive 
+	m_vehicle->setEnabledYawVelocity(targetYawVelocity, vel_tau);
+	// For ackermann
+	// m_vehicle->setEnabledLinearVelocity(vel_tau);
+	// m_vehicle->setEnabledYawVelocity(targetYawVelocity, vel_tau); or  // m_vehicle->setEnabledSteeringAngle(targetSteering);
 }
 
 void Hinge2Vehicle::specialKeyboardUp(int key, int x, int y)

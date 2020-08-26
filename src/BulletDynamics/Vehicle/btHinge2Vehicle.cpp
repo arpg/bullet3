@@ -24,6 +24,7 @@ btHinge2Vehicle::btHinge2Vehicle()
 {
 }
 
+
 btHinge2Vehicle::~btHinge2Vehicle()
 {
 	while (m_constraints.size()>0)
