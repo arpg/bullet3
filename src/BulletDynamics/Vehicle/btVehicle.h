@@ -41,8 +41,11 @@ public:
 	virtual void updateVehicle(btScalar step) = 0;
 	virtual void debugDraw(btIDebugDraw* debugDrawer) = 0;
 
-	virtual inline btVector3 getChassisVelocity() { return btTransform(btTransform(btQuaternion(0,0,0,1),getChassisBody()->getLinearVelocity())*getChassisWorldTransform()).getOrigin(); }
-	virtual inline btScalar getChassisForwardVelocity() { return getChassisVelocity()[getForwardAxis()]; }  
+	virtual inline btVector3 getChassisLinearVelocity() { return getChassisWorldTransform().getBasis().transpose() * getChassisBody()->getLinearVelocity(); }
+	virtual inline btScalar getChassisForwardVelocity() { return getChassisLinearVelocity()[getForwardAxis()]; }  
+
+	virtual inline btVector3 getChassisAngularVelocity() { return getChassisWorldTransform().getBasis().transpose() * getChassisBody()->getAngularVelocity(); }
+	virtual inline btScalar getChassisYawVelocity() { return getChassisAngularVelocity()[getUpAxis()]; }  
 
 	virtual btTransform& getChassisWorldTransform();
 

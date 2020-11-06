@@ -1,10 +1,35 @@
-#include "btWheelVehicle.h"
-class btWheelVehicle;
+#include "BulletDynamics/Vehicle/btWheelVehicle.h"
 
-btWheelVehicle::btWheelVehicle()
+// void* btDefaultVehicleRaycaster::castRay(const btVector3& from, const btVector3& to, btVehicleRaycasterResult& result)
+// {
+// 	//	RayResultCallback& resultCallback;
+
+// 	btCollisionWorld::ClosestRayResultCallback rayCallback(from, to);
+
+// 	m_dynamicsWorld->rayTest(from, to, rayCallback);
+
+// 	if (rayCallback.hasHit())
+// 	{
+// 		const btRigidBody* body = btRigidBody::upcast(rayCallback.m_collisionObject);
+// 		if (body && body->hasContactResponse())
+// 		{
+// 			result.m_hitPointInWorld = rayCallback.m_hitPointWorld;
+// 			result.m_hitNormalInWorld = rayCallback.m_hitNormalWorld;
+// 			result.m_hitNormalInWorld.normalize();
+// 			result.m_distFraction = rayCallback.m_closestHitFraction;
+// 			return (void*)body;
+// 		}
+// 	}
+// 	return 0;
+// }
+
+/////////////////////////////////////////////////////////////////
+
+btWheelVehicle::btWheelVehicle() 
 	: btVehicle(),
 	  m_driveMode(DIFF)
 {	
+	configureForDriveMode();
 }
 
 
@@ -23,24 +48,47 @@ btWheelVehicle::~btWheelVehicle()
 
 void btWheelVehicle::debugDraw(btIDebugDraw* debugDrawer)
 {
-	// for (int v = 0; v < this->getNumWheels(); v++)
-	// {
-	// 	btVector3 wheelPosWS = getWheelInfo(v).m_worldTransform.getOrigin();
+	for (int v = 0; v < this->getNumWheels(); v++)
+	{
+		btVector3 wheelColor(0, 1, 1);
+		// if (getWheel(v)->isInContact())
+		// {
+			// wheelColor.setValue(0, 0, 1);
+		// }
+		// else
+		// {
+		// 	wheelColor.setValue(1, 0, 1);
+		// }
 
-	// 	btVector3 axle = btVector3(
-	// 		getWheelInfo(v).m_worldTransform.getBasis()[0][getRightAxis()],
-	// 		getWheelInfo(v).m_worldTransform.getBasis()[1][getRightAxis()],
-	// 		getWheelInfo(v).m_worldTransform.getBasis()[2][getRightAxis()]);
+		btVector3 wheelPosWS = getWheel(v)->getWorldTransform().getOrigin();
 
-	// 	//debug wheels (cylinders)
-	// 	debugDrawer->drawLine(wheelPosWS, wheelPosWS + axle, wheelColor);
-	// 	debugDrawer->drawLine(wheelPosWS, getWheelInfo(v).m_raycastInfo.m_contactPointWS, wheelColor);
-	// }
+		btVector3 axle = btVector3(
+			getWheel(v)->getWorldTransform().getBasis()[0][getRightAxis()],
+			getWheel(v)->getWorldTransform().getBasis()[1][getRightAxis()],
+			getWheel(v)->getWorldTransform().getBasis()[2][getRightAxis()]);
+
+		//debug wheels (cylinders)
+		debugDrawer->drawLine(wheelPosWS, wheelPosWS + axle, wheelColor);
+		// debugDrawer->drawLine(wheelPosWS, getWheel(v)->m_raycastInfo.m_contactPointWS, wheelColor);
+	}
 }
+
+// void btWheelVehicle::spawn(btDynamicsWorld* world, btTransform initialPose)
+// {
+// 	// m_raycaster = new btDefaultVehicleRaycaster(world);
+
+// 	btVehicle::spawn(world, initialPose);
+// 	for(uint i=0; i<getNumWheels(); i++)
+// 	{
+// 		getWheel(i)->spawn(world);
+// 	}
+// }
 
 void btWheelVehicle::setDriveMode(DriveMode mode)
 {
+	if (mode == m_driveMode) return;
 	m_driveMode = mode;
+	configureForDriveMode();
 }
 
 void btWheelVehicle::resetSuspension()
@@ -113,60 +161,50 @@ void btWheelVehicle::setEnabledSteeringAngle(btScalar val)
 	}
 }
 
-void btWheelVehicle::setEnabledYawVelocity(btScalar val, btScalar lspeed = 0)
+void btWheelVehicle::setEnabledVelocity(btScalar yaw_vel, btScalar forw_vel)
 {
-	printf("Setting yaw vel %f rad/s", val);
-
-	configureForDriveMode();
+	// printf("Setting yaw vel %f rad/s", val);
 
 	switch (m_driveMode)
 	{
 		case DriveMode::DIFF :
 		{
-			printf(" in diff mode\n");
-			// for(uint i=0; i<getNumWheels(); i++)
-			// {
-			// 	btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
-			// 	btScalar lin_vel = getCurrentSpeedMS() - wheelTranCS.getOrigin()[getRightAxis()] * val;
-			// 	btScalar ang_vel = lin_vel / getWheel(i)->getRadius();
-			// 	printf("\twheel %d ang vel %f rad/s\n", i, ang_vel);
-      //   printf("\t %d lin vel %f rad/s\n", i, lin_vel);
-			// 	getWheel(i)->setAngularVelocity(ang_vel);
-			// }
-
-      			btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(0)->getWorldTransform();
+			// printf(" in diff mode\n");
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
       			btScalar wheel_base = 2*fabs(wheelTranCS.getOrigin()[getForwardAxis()]);
-      			btScalar ang_vel_r = (lspeed + val*wheel_base/2.0); 
-      			btScalar ang_vel_l = (lspeed - val*wheel_base/2.0);
-
-			getWheel(0)->setAngularVelocity(ang_vel_r/getWheel(0)->getRadius());
-      			getWheel(1)->setAngularVelocity(ang_vel_l/getWheel(1)->getRadius());
-      			getWheel(2)->setAngularVelocity(ang_vel_l/getWheel(2)->getRadius());
-      			getWheel(3)->setAngularVelocity(ang_vel_r/getWheel(3)->getRadius());
+				btScalar ang_vel_sign = -1*wheelTranCS.getOrigin()[getRightAxis()];
+				ang_vel_sign /= fabs(ang_vel_sign);
+      			btScalar ang_vel = (forw_vel + ang_vel_sign*yaw_vel*wheel_base/2.0); 
+				getWheel(i)->setAngularVelocity(ang_vel/getWheel(i)->getRadius());
+			}
 			break;
 		}
 		case DriveMode::ACKERMANN :
 		{
-			printf(" in ackermann mode\n");
+			// printf(" in ackermann mode\n");
 			btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(0)->getWorldTransform();
 			btScalar wheel_base = 2*fabs(wheelTranCS.getOrigin()[getForwardAxis()]);
-			btScalar steering_angle = atan2(val * wheel_base, getCurrentSpeedMS());
-			printf("\tenabled steering %f rad\n", steering_angle);
+			btScalar steering_angle = atan2(yaw_vel * wheel_base, getCurrentSpeedMS());
+			// printf("\tenabled steering %f rad\n", steering_angle);
 			setEnabledSteeringAngle(steering_angle);
+			setEnabledLinearVelocity(forw_vel);
 			break;
 		}
 		case DriveMode::DUAL_ACKERMANN :
 		{
-			printf(" in dual ackermann mode\n");
+			// printf(" in dual ackermann mode\n");
 			for(uint i=0; i<getNumWheels(); i++)
 			{
 				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
 				btScalar wheel_base = wheelTranCS.getOrigin()[getForwardAxis()];
-				btScalar steering_angle = atan2(val * wheel_base, getCurrentSpeedMS());
+				btScalar steering_angle = atan2(yaw_vel * wheel_base, getCurrentSpeedMS());
 				// setEnabledSteeringAngle(atan2(val * wheel_base, getCurrentSpeedMS()));
-				printf("\twheel %d steering %f rad\n", i, steering_angle);
+				// printf("\twheel %d steering %f rad\n", i, steering_angle);
 				getWheel(i)->setSteeringAngle(steering_angle);
 			}
+			setEnabledLinearVelocity(forw_vel);
 			break;
 		}
 		default:
@@ -313,6 +351,24 @@ void btWheelVehicle::configureForDriveMode()
 				getWheel(i)->setMinSteeringAngle(-0.4);
 				getWheel(i)->setMaxSteeringAngle(0.4);
 				
+			}
+			break;
+
+		case DriveMode::REAR_ACKERMANN:
+			for(uint i=0; i<getNumWheels(); i++)
+			{
+				// getWheel(i)->setSteeringAngle(0);
+				btTransform wheelTranCS = getChassisWorldTransform().inverse() * getWheel(i)->getWorldTransform();
+				if (wheelTranCS.getOrigin()[getForwardAxis()] < 0) // rear wheel
+				{
+					getWheel(i)->setMinSteeringAngle(-0.4);
+					getWheel(i)->setMaxSteeringAngle(0.4);
+				}
+				else // front wheel
+				{
+					getWheel(i)->setMinSteeringAngle(0);
+					getWheel(i)->setMaxSteeringAngle(0);
+				}
 			}
 			break;
 

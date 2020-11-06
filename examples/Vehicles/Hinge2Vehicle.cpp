@@ -125,14 +125,16 @@ static void preTickCallback(btDynamicsWorld* world, btScalar timeStep)
 	info->setTargets();
 	// fps = 1/timeStep;
 
-	std::string prtmsg;
-	for (int i = 0; i < info->m_vehicle->getNumWheels(); i++)
-	{
-		prtmsg += "Wheel "+std::to_string(i)+":\n";
-		prtmsg += info->m_vehicle->wheel2str(i,"","","\t","");
-	}
-	std::cout << prtmsg;
-	std::cout << "Speed " << std::to_string(info->m_vehicle->getCurrentSpeedMS()) << " m/s" << std::endl;
+	// std::string prtmsg;
+	// for (int i = 0; i < info->m_vehicle->getNumWheels(); i++)
+	// {
+	// 	prtmsg += "Wheel "+std::to_string(i)+":\n";
+	// 	prtmsg += info->m_vehicle->wheel2str(i,"","","\t","");
+	// }
+	// std::cout << prtmsg;
+
+	// std::cout << "Speed " << std::to_string(info->m_vehicle->getCurrentSpeedMS()) << " m/s" << std::endl;
+
 }	
 
 void Hinge2Vehicle::initPhysics()
@@ -496,7 +498,7 @@ void Hinge2Vehicle::resetCamera()
 	target.getRotation().getEulerZYX(qy,qp,qr);
 	yaw += qy*B3_DEGS_PER_RAD;
 
-	printf("x %f y %f z %f r %f p %f y %f\n", targetPos[0], targetPos[1], targetPos[2], qr, qp, qy);
+	// printf("camera x %f y %f z %f r %f p %f y %f\n", targetPos[0], targetPos[1], targetPos[2], qr, qp, qy);
 
 	// if (yaw > 90)
 	// 	yaw = 180-yaw;
@@ -719,6 +721,15 @@ void Hinge2Vehicle::setTargets()
 {
   //m_vehicle->setDriveMode(btWheelVehicle::DriveMode::ACKERMANN);
 
+
+	btVector3 linpos = m_vehicle->getChassisWorldTransform().getOrigin();
+	btScalar qy,qp,qr;
+	m_vehicle->getChassisWorldTransform().getRotation().getEulerZYX(qy,qp,qr);
+	btVector3 linvel = m_vehicle->getChassisLinearVelocity();
+	btVector3 angvel = m_vehicle->getChassisAngularVelocity();
+	printf("pos x %s%f y %s%f z %s%f r %s%f p %s%f y %s%f\n", linpos[0]>0?" ":"", linpos[0], linpos[1]>0?" ":"", linpos[1], linpos[2]>0?" ":"", linpos[2], qr>0?" ":""	, qr, qp>0?" ":"", qp, qy>0?" ":"", qy);
+	printf("vel x %s%f y %s%f z %s%f r %s%f p %s%f y %s%f\n", linvel[0]>0?" ":"", linvel[0], linvel[1]>0?" ":"", linvel[1], linvel[2]>0?" ":"", linvel[2], angvel[0]>0?" ":"", angvel[0], angvel[1]>0?" ":"", angvel[1], angvel[2]>0?" ":"", angvel[2]);
+
 	static btScalar vel_tau;
 	float vel_max = 6.f;
 	float vel_diff = 0.01f;
@@ -735,7 +746,7 @@ void Hinge2Vehicle::setTargets()
 	}
 	else //if (!throttle_down && !throttle_up)
 	{
-		//vel_tau = 0.f;
+		vel_tau *= 0.96;
 	}
 	// btScalar maxTargetVelocity = 4.f;
 	// std::vector<float> vel_profile = {0, 0.5*maxTargetVelocity, maxTargetVelocity}; 
@@ -800,15 +811,20 @@ void Hinge2Vehicle::setTargets()
     }
 	else
     {
-      //targetYawVelocity = 0;
+      targetYawVelocity = 0;
     }
 	  //m_vehicle->setEnabledLinearVelocity(vel_tau);
   	
   	// For diff drive 
-	m_vehicle->setEnabledYawVelocity(targetYawVelocity, vel_tau);
+	m_vehicle->setEnabledVelocity(targetYawVelocity, vel_tau);
 	// For ackermann
 	// m_vehicle->setEnabledLinearVelocity(vel_tau);
 	// m_vehicle->setEnabledYawVelocity(targetYawVelocity, vel_tau); or  // m_vehicle->setEnabledSteeringAngle(targetSteering);
+	// m_vehicle->setEnabledSteeringAngle(targetSteering);
+
+	// printf("Setting force %f steer %f\n", targetForce, targetSteering);
+
+	// m_vehicle->applyForces();	
 }
 
 void Hinge2Vehicle::specialKeyboardUp(int key, int x, int y)

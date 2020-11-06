@@ -7,7 +7,7 @@
 class btWheelVehicle : public btVehicle
 {
 public:
-	enum DriveMode{ DIFF=0, ACKERMANN=1, DUAL_ACKERMANN=2};
+	enum DriveMode{ DIFF=0, ACKERMANN=1, DUAL_ACKERMANN=2, REAR_ACKERMANN=3};
 
 protected:
 	btAlignedObjectArray<btWheel*> m_wheels;
@@ -35,7 +35,7 @@ public:
 	virtual void setEnabledLinearVelocity(btScalar);
 	virtual void setEnabledAngularAcceleration(btScalar accel, btScalar dt);
 	virtual void setEnabledSteeringAngle(btScalar);
-	virtual void setEnabledYawVelocity(btScalar , btScalar);
+	virtual void setEnabledVelocity(btScalar , btScalar);
 
 	virtual void setAllFriction(btScalar);
 	virtual void setAllStiffness(btScalar);

@@ -36,13 +36,16 @@ btHinge2Vehicle::~btHinge2Vehicle()
 void btHinge2Vehicle::updateAction(btCollisionWorld* collisionWorld, btScalar step)
 {
 	// (void)collisionWorld;
-	// updateVehicle(step);
-	updateConstraints();
+	updateVehicle(step);
+	// updateConstraints();
 }
 
 void btHinge2Vehicle::updateVehicle(btScalar step)
 {
-	applyForces(step);
+	// applyForces(step);
+
+	// void(step);
+	updateConstraints();
 }
 
 btHinge2Constraint* btHinge2Vehicle::addWheel2(btRigidBody* wheelBody, btScalar maxSteering, btScalar maxAngularVelocity, btScalar suspensionStiffness, btScalar suspensionDamping, btScalar maxTravel, btScalar friction, btScalar stallTorque)
@@ -375,6 +378,7 @@ btDefaultHinge2Vehicle::btDefaultHinge2Vehicle(
 	stallTorque(_stallTorque),
 	maxSteeringRate(_maxSteeringRate)
 {
+	setDriveMode(DriveMode::ACKERMANN);
 }
 
 void btDefaultHinge2Vehicle::spawn(

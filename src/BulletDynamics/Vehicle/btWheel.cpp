@@ -15,18 +15,18 @@ void btWheel::castRay(btVehicleRaycaster* vehicleRaycaster, btVehicleRaycaster::
 
     // void* object = vehicleRaycaster->castRay(source, target, rayResults);
     vehicleRaycaster->castRay(source, target, rayResults);
-    std::cout << "***castwheel " 
-        << "\n " << std::to_string(rayResults.m_hitPointInWorld[0]) 
-        << " " << std::to_string(rayResults.m_hitPointInWorld[1]) 
-        << " " << std::to_string(rayResults.m_hitPointInWorld[2])
-        << "\n " << std::to_string(source[0])  
-        << " " << std::to_string(source[1])  
-        << " " << std::to_string(source[2])  
-        << "\n " << std::to_string(target[0])  
-        << " " << std::to_string(target[1])  
-        << " " << std::to_string(target[2])  
-        // << " " << std::to_string(rayResults.m_distFraction) 
-        << std::endl;
+    // std::cout << "***castwheel " 
+    //     << "\n " << std::to_string(rayResults.m_hitPointInWorld[0]) 
+    //     << " " << std::to_string(rayResults.m_hitPointInWorld[1]) 
+    //     << " " << std::to_string(rayResults.m_hitPointInWorld[2])
+    //     << "\n " << std::to_string(source[0])  
+    //     << " " << std::to_string(source[1])  
+    //     << " " << std::to_string(source[2])  
+    //     << "\n " << std::to_string(target[0])  
+    //     << " " << std::to_string(target[1])  
+    //     << " " << std::to_string(target[2])  
+    //     // << " " << std::to_string(rayResults.m_distFraction) 
+    //     << std::endl;
 
     return;
 }
